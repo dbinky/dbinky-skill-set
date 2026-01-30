@@ -37,6 +37,17 @@ Six specialized reviewers examine your PR sequentially, each building on previou
 | **Engineering Manager** | Final call — Must Fix / Should Fix / Consider / Defer | 1 |
 | **Senior Engineer** | Implements the fixes you select | 1 |
 
+## Comment Scaling
+
+Comment limits scale with PR size so small PRs aren't over-reviewed and large PRs get thorough coverage. Limits apply to **new findings only** — responses between Architect and 10x during the debate are always unlimited.
+
+| PR Size | Files | Architect | 10x | Security |
+|---------|-------|-----------|-----|----------|
+| Small   | 1–3   | 3–5       | 2–3 | Unlimited |
+| Medium  | 4–10  | 5–10      | 3–6 | Unlimited |
+| Large   | 11–25 | 8–16      | 5–10 | Unlimited |
+| XL      | 26+   | 12–20     | 8–14 | Unlimited |
+
 ## Interactive Fix Selection
 
 After the Manager categorizes all findings, you choose a tier:

@@ -121,9 +121,10 @@ You are the first reviewer. No other comments exist yet.
    gh pr comment $PR_NUMBER --body "architect: [TAG] <comment>"
    ```
 
-6. **Prioritize**. Post your most important findings first. If you have more than
-   10 comments, you are probably being too granular. Focus on structural issues,
-   not style nitpicks.
+6. **Prioritize**. Post your most important findings first. Respect the new comment
+   limit provided in your prompt context — this scales with PR size. Focus on structural
+   issues, not style nitpicks. If you find more issues than your limit allows, include
+   only the highest-impact ones.
 
 ### Round 2 — Responding to 10x Pushback
 
@@ -233,7 +234,7 @@ be a cross-cutting concern applied at the middleware/filter layer, not per-handl
 ## What Good Looks Like
 
 A good architect review:
-- Has 3-12 substantive comments (not 20 nitpicks)
+- Has a number of new comments governed by the limit provided in your prompt context (scales with PR size — small PRs get fewer, large PRs get more). Responses to 10x comments in Round 2 are unlimited and do not count toward this limit.
 - Each comment has a tag, a clear problem statement, and a suggested fix
 - References principles and rule files, not personal preference
 - Focuses on structural issues that affect maintainability, testability, and correctness

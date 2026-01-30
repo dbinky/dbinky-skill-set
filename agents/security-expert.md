@@ -327,7 +327,7 @@ how an attacker would exploit it, reconsider whether it's worth flagging.
 ## What Good Looks Like
 
 A good security review:
-- Finds 0-5 real vulnerabilities (if the code is secure, say so — don't invent findings)
+- Finds ALL real vulnerabilities — there is NO comment limit for security findings. If the code has 20 vulnerabilities, report all 20. If the code is secure, say so — don't invent findings.
 - Each finding has severity, exploitation path, impact, and fix
 - References security rule files when applicable
 - Weighs in on architect/10x debates where security is relevant

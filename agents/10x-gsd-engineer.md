@@ -134,7 +134,9 @@ AND add your own practical findings.
      wasted effort.
      ```
 
-6. **Post your own practical findings.** Things the architect tends to miss:
+6. **Post your own practical findings.** Respect the new comment limit from your prompt
+   context — this governs new findings only. Your responses to architect comments above
+   are unlimited. Things the architect tends to miss:
    - Off-by-one errors and boundary conditions
    - Error handling gaps (what happens when the network call fails?)
    - Race conditions in concurrent code
@@ -309,7 +311,7 @@ Bad: "Nobody cares about SOLID in a script."
 
 A good 10x review:
 - Engages substantively with every architect comment (agree, push back, or compromise)
-- Finds 2-4 practical issues the architect missed (bugs, edge cases, deployment risks)
+- Finds practical issues the architect missed (bugs, edge cases, deployment risks), up to the new comment limit provided in your prompt context (scales with PR size). Responses to architect comments are unlimited.
 - Proposes simpler alternatives where the architect over-engineers
 - Concedes where the architect is genuinely right
 - Provides context about usage patterns, team size, and deployment that affects decisions

@@ -200,6 +200,34 @@ they just lack technology-specific guidance.
 
 ---
 
+## Phase 3.5: PR Size Classification and Comment Limits
+
+Count the files changed in the PR (from the diff already retrieved in Phase 3):
+
+```bash
+gh pr diff $PR_NUMBER --name-only | wc -l
+```
+
+Store the result as `FILES_CHANGED`. Classify the PR and compute comment limits:
+
+| Files Changed | Size Tier | `ARCHITECT_COMMENT_LIMIT` | `TENX_COMMENT_LIMIT` |
+|---------------|-----------|---------------------------|----------------------|
+| 1–3           | Small     | 3–5                       | 2–3                  |
+| 4–10          | Medium    | 5–10                      | 3–6                  |
+| 11–25         | Large     | 8–16                      | 5–10                 |
+| 26+           | XL        | 12–20                     | 8–14                 |
+
+**Security Expert and Engineering Manager have NO comment limits.**
+
+**Critical rule — responses vs new comments:**
+- **Responses** to the other persona's existing threads are UNLIMITED. The debate must flow freely.
+- **New comments** that open new threads are governed by the limits above.
+- Round 2 for both architect and 10x is response-only (no new threads allowed), so limits only apply in Round 1.
+
+Log the PR size tier, files changed count, and computed limits before proceeding.
+
+---
+
 ## Phase 4: Pipeline Execution
 
 Execute the review pipeline **sequentially**. Each step MUST complete before the next
@@ -214,7 +242,9 @@ Dispatch via **Task** tool:
 - **Prompt context**:
   - PR number: `$PR_NUMBER`
   - Round: 1 (first reviewer, no prior comments to read)
-  - Instruction: "You are the FIRST reviewer. Read your agent file and all rule files provided. Review the full PR diff and post your findings as inline and general comments."
+  - PR size: `$FILES_CHANGED` files (`$SIZE_TIER`)
+  - New comment limit: `$ARCHITECT_COMMENT_LIMIT`
+  - Instruction: "You are the FIRST reviewer. Read your agent file and all rule files provided. Review the full PR diff and post your findings as inline and general comments. Your new comment limit is $ARCHITECT_COMMENT_LIMIT — this governs new threads only. Post your highest-impact findings first."
 
 Wait for completion. Verify comments were posted by checking:
 ```bash
@@ -230,7 +260,9 @@ Dispatch via **Task** tool:
 - **Prompt context**:
   - PR number: `$PR_NUMBER`
   - Round: 1 (second reviewer, architect has posted)
-  - Instruction: "You are the SECOND reviewer. The architect has already posted comments. Read your agent file, all rule files, and ALL existing PR comments. Respond to architect comments where you agree, disagree, or want to add nuance. Also post your own practical findings."
+  - PR size: `$FILES_CHANGED` files (`$SIZE_TIER`)
+  - New comment limit: `$TENX_COMMENT_LIMIT` (responses to architect are unlimited)
+  - Instruction: "You are the SECOND reviewer. The architect has already posted comments. Read your agent file, all rule files, and ALL existing PR comments. Respond to architect comments where you agree, disagree, or want to add nuance. Also post your own practical findings. Your new comment limit is $TENX_COMMENT_LIMIT — this governs new findings only. Responses to architect comments are unlimited."
 
 Wait for completion.
 
@@ -268,7 +300,8 @@ Dispatch via **Task** tool:
 - **Rule files**: ALL files in `security_rule_files`
 - **Prompt context**:
   - PR number: `$PR_NUMBER`
-  - Instruction: "You are the security reviewer. Read your agent file and all security rule files provided. Read ALL existing PR comments from the architect/10x debate. Do two things: (1) Weigh in on existing debates from a security perspective where relevant. (2) Post NEW security findings with severity tags. Use inline comments for specific code lines and general comments for broad concerns."
+  - Comment limit: NONE — security findings are unlimited
+  - Instruction: "You are the security reviewer. Read your agent file and all security rule files provided. Read ALL existing PR comments from the architect/10x debate. Do two things: (1) Weigh in on existing debates from a security perspective where relevant. (2) Post NEW security findings with severity tags. Use inline comments for specific code lines and general comments for broad concerns. You have NO comment limit — report every real vulnerability you find."
 
 Wait for completion.
 
