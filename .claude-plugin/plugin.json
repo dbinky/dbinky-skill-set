@@ -6,8 +6,8 @@
     "name": "Ryan",
     "email": ""
   },
-  "homepage": "https://github.com/dbinky/pr-review-skill",
-  "repository": "https://github.com/dbinky/pr-review-skill",
+  "homepage": "https://github.com/dbinky/dbinky-skill-set",
+  "repository": "https://github.com/dbinky/dbinky-skill-set",
   "license": "MIT",
   "keywords": ["pr-review", "code-review", "multi-persona", "security", "architecture"]
 }
