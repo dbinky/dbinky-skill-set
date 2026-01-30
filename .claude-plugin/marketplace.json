@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "pr-review",
-      "source": ".",
+      "source": "./",
       "description": "Multi-persona PR review pipeline with language and framework-specific rules. Sequential review by Architect, 10x Engineer, Security Expert, and Engineering Manager with interactive fix selection.",
       "version": "1.0.0"
     }

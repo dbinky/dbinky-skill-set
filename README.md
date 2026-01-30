@@ -14,7 +14,7 @@ Six specialized reviewers examine your PR sequentially, each building on previou
 
 ```bash
 # Add the marketplace
-/plugin marketplace add https://github.com/dbinky/dbinky-skill-set.git
+/plugin marketplace add dbinky/dbinky-skill-set
 
 # Install the plugin
 /plugin install pr-review@dbinky-skill-set
