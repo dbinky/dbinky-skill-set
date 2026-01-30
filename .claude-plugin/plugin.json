@@ -1,0 +1,13 @@
+{
+  "name": "pr-review",
+  "version": "1.0.0",
+  "description": "Multi-persona PR review pipeline with language and framework-specific rules. Sequential review by Architect, 10x Engineer, Security Expert, and Engineering Manager with interactive fix selection.",
+  "author": {
+    "name": "Ryan",
+    "email": ""
+  },
+  "homepage": "https://github.com/dbinky/pr-review-skill",
+  "repository": "https://github.com/dbinky/pr-review-skill",
+  "license": "MIT",
+  "keywords": ["pr-review", "code-review", "multi-persona", "security", "architecture"]
+}
