@@ -1,0 +1,17 @@
+{
+  "name": "pr-review",
+  "version": "1.0.0",
+  "description": "Multi-persona PR review pipeline, ralph loop planning, and code review skills.",
+  "author": {
+    "name": "Ryan",
+    "email": ""
+  },
+  "homepage": "https://github.com/dbinky/dbinky-skill-set",
+  "repository": "https://github.com/dbinky/dbinky-skill-set",
+  "license": "MIT",
+  "skills": [
+    "./skills/pr-review",
+    "./skills/ralph-plan",
+    "./skills/plan-to-ralph"
+  ]
+}

@@ -10,24 +10,9 @@
   "plugins": [
     {
       "name": "pr-review",
-      "description": "Multi-persona PR review pipeline with language and framework-specific rules.",
       "source": "./",
-      "strict": false,
-      "skills": ["./skills/pr-review"]
-    },
-    {
-      "name": "ralph-plan",
-      "description": "Automate ralph loop setup — backs up existing tracking docs, copies templates, populates focus areas.",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/ralph-plan"]
-    },
-    {
-      "name": "plan-to-ralph",
-      "description": "Interactive Q&A to generate ralph-o-matic loop files (RALPH.md, focus-areas.md, gaps-identified.md) customized for your project.",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/plan-to-ralph"]
+      "description": "Multi-persona PR review pipeline, ralph loop planning, and code review skills.",
+      "version": "1.0.0"
     }
   ]
 }
