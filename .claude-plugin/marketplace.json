@@ -13,12 +13,6 @@
       "source": "./",
       "description": "Multi-persona PR review pipeline with language and framework-specific rules. Sequential review by Architect, 10x Engineer, Security Expert, and Engineering Manager with interactive fix selection.",
       "version": "1.0.0"
-    },
-    {
-      "name": "plan-to-ralph",
-      "source": "./",
-      "description": "Interactive Q&A to generate ralph-o-matic loop files (RALPH.md, focus-areas.md, gaps-identified.md) customized for your project.",
-      "version": "1.0.0"
     }
   ]
 }
