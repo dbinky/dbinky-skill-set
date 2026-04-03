@@ -143,39 +143,49 @@ Store the final persona as `PERSONA`.
 
 **If the scan found components:**
 
-Present the discovered components as a numbered list grouped by category:
+Generate focus areas across three categories. Think beyond directory structure — identify the domain concepts, their neighborhoods, and the vertical slices that cut through the codebase from top to bottom. Aim for a thorough list; more areas means more coverage.
+
+1. **Components** — Individual modules, packages, or directories that own a distinct responsibility (these come directly from the scan results).
+2. **Domain Concepts** — Logical concepts that may span multiple files or directories: a business entity and everything that touches it (models, validation, persistence, API surface, tests), a workflow or process (e.g., "order fulfillment" across handlers, services, and repositories), or a cross-cutting concern (error handling strategy, logging conventions, auth/authz boundaries). Include neighboring concepts — if "payments" is a domain, "refunds" and "invoicing" are its neighbors and deserve their own areas.
+3. **Vertical Slices** — End-to-end paths through the system: a user action from API endpoint (or UI event) through business logic, data access, and back. Each slice should trace a complete request/response or workflow from the outermost boundary to the innermost layer and back.
+
+Present all discovered areas as a numbered list grouped by these categories:
 
 ```
 Based on the codebase scan, here are the candidate focus areas:
 
-**Core Components:**
-  [1] Component A (src/component_a/) — handles user authentication
-  [2] Component B (src/component_b/) — payment processing logic
-
-**Supporting:**
+**Components:**
+  [1] Auth Module (src/auth/) — authentication and session management
+  [2] Payment Service (src/payments/) — payment processing logic
   [3] Database Layer (src/db/) — schema, migrations, queries
   [4] Configuration (config/) — env loading, defaults
-
-**Infrastructure:**
   [5] CI/CD (.github/workflows/) — build, test, deploy pipelines
-  [6] Docker (Dockerfile, docker-compose.yml) — container config
 
-**Test Coverage:**
-  [7] Tests (tests/) — test isolation, mocking, coverage gaps
+**Domain Concepts:**
+  [6] User Identity (src/auth/, src/users/, src/db/users.sql) — user model, registration, profile, permissions as a cohesive domain
+  [7] Payment Lifecycle (src/payments/, src/refunds/, src/invoicing/) — charge, capture, refund, and invoice as a connected domain neighborhood
+  [8] Error Handling Strategy (across all modules) — error types, propagation patterns, user-facing error responses, logging consistency
+  [9] Test Quality & Isolation (tests/) — test patterns, mocking strategy, fixture management, coverage gaps
+
+**Vertical Slices:**
+  [10] User Registration Flow — POST /register → validation → user creation → welcome email → response
+  [11] Payment Checkout Flow — POST /checkout → auth check → inventory hold → charge → confirmation → response
+  [12] Admin Dashboard Load — GET /admin → auth middleware → aggregate queries → template rendering → response
 
 Which areas should be included in the review? You can:
 - List numbers to include (e.g., "1, 2, 3, 5")
 - Say "all" to include everything
-- Add areas not in the list (e.g., "also add: API endpoints (src/api/)")
-- Remove areas (e.g., "drop 6")
+- Add areas not in the list (e.g., "also add: Notification System (src/notifications/)")
+- Remove areas (e.g., "drop 5")
 ```
 
 **If the scan found zero components:**
 
-Ask: "I couldn't detect clear components in this codebase. Please describe the focus areas for review. List them one per line, with a brief description of what each covers."
+Ask: "I couldn't detect clear components in this codebase. Please describe the focus areas for review — include code modules, domain concepts (business entities and their neighbors), and vertical slices (end-to-end flows). List them one per line, with a brief description of what each covers."
 
 For each selected/added focus area, ensure it has:
 - A name
+- A category (Component, Domain Concept, or Vertical Slice)
 - Key files (from scan or user input)
 - A one-line review scope description
 
@@ -183,21 +193,35 @@ Store the final list as `SINGLE_AREAS`.
 
 ### Question 5: Paired Focus Areas
 
-Generate suggested pairings from the selected single areas:
+Generate suggested pairings from the selected single areas. Pairings should go beyond adjacent modules — think about every meaningful boundary where two areas interact, hand off data, or share assumptions. Generate pairings across all three categories:
 
-- Components that share a directory parent or have naming relationships
-- When CONTEXT was provided: the context system paired with every component it touches (direct and indirect)
-- Common integration seams: API + DB, client + server, config + all, tests + components
+1. **Component Integration** — Two components that communicate, share data structures, or depend on each other's contracts. Focus on the seam: data format, error propagation, sequencing, and shared state.
+2. **Domain Boundary** — Two domain concepts that neighbor each other or overlap. Focus on whether business rules are consistent across the boundary: does the payment domain's definition of "completed" match what the notification domain expects? Do neighboring concepts handle the same edge cases the same way?
+3. **Vertical Slice Handoffs** — A vertical slice paired with a component or domain concept it passes through. Focus on whether the slice's assumptions hold at each layer: does the API contract match the service interface? Does the service call the repository correctly? Does the response shape match what the caller expects?
+4. **Cross-Cutting Consistency** — A cross-cutting concern (error handling, logging, config, auth) paired with a specific component or domain to verify the concern is applied consistently and correctly in that area.
 
-Present as a numbered list:
+When CONTEXT was provided: the context system paired with every component, domain concept, and vertical slice it touches (direct and indirect).
+
+Present as a numbered list grouped by pairing type:
 
 ```
-Suggested paired reviews (verifying integration seams):
+Suggested paired reviews (verifying integration and consistency):
 
-  [1] Component A + Component B — data flow, error propagation
-  [2] Component A + Database — query correctness, transaction boundaries
-  [3] Config + All Components — env vars match behavior, defaults correct
-  [4] Tests + Components — tests cover seams, not just happy paths
+**Component Integration:**
+  [1] Auth Module + Database Layer — session storage, credential queries, transaction safety
+  [2] Payment Service + Auth Module — authorization checks before charges, token propagation
+
+**Domain Boundary:**
+  [3] Payment Lifecycle + User Identity — does "active user" mean the same thing in both domains? Refund eligibility vs. account status
+  [4] Payment Lifecycle + Error Handling Strategy — are payment failures surfaced consistently? Retry semantics, idempotency
+
+**Vertical Slice Handoffs:**
+  [5] User Registration Flow + Database Layer — user creation query correctness, constraint handling, rollback on email failure
+  [6] Payment Checkout Flow + Payment Lifecycle — does the flow exercise the full lifecycle? Edge cases at each layer boundary
+
+**Cross-Cutting Consistency:**
+  [7] Error Handling Strategy + Payment Service — are payment errors typed, logged, and surfaced correctly?
+  [8] Configuration + Auth Module — do auth config values (token TTL, allowed origins) match runtime behavior?
 
 Which pairs to include? Same controls as above: list numbers, "all", add new pairs, or drop.
 ```
