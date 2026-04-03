@@ -11,8 +11,29 @@
     {
       "name": "pr-review",
       "source": "./",
-      "description": "Multi-persona PR review pipeline, ralph loop planning, and code review skills.",
-      "version": "1.0.0"
+      "description": "Multi-persona PR review pipeline with sequential AI agent personas.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/pr-review"
+      ]
+    },
+    {
+      "name": "ralph-plan",
+      "source": "./",
+      "description": "Automate ralph loop setup from branch changes or user-specified scope.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/ralph-plan"
+      ]
+    },
+    {
+      "name": "plan-to-ralph",
+      "source": "./",
+      "description": "Interactive Q&A to generate ralph-o-matic loop files customized for your project.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/plan-to-ralph"
+      ]
     }
   ]
 }

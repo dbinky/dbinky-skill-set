@@ -10,8 +10,6 @@
   "repository": "https://github.com/dbinky/dbinky-skill-set",
   "license": "MIT",
   "skills": [
-    "./skills/pr-review",
-    "./skills/ralph-plan",
-    "./skills/plan-to-ralph"
+    "./skills/pr-review"
   ]
 }
