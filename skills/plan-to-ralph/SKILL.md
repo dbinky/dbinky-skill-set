@@ -1,6 +1,6 @@
 ---
 name: plan-to-ralph
-description: Interactive Q&A to generate ralph-o-matic loop files (RALPH.md, focus-areas.md, gaps-identified.md) customized for your project
+description: Generate ralph-o-matic loop files via interactive Q&A or automatic derivation (--auto) from spec and design docs
 ---
 
 # Plan to Ralph
@@ -19,6 +19,8 @@ Parse the following from the user's command:
 
 - `CONTEXT` (optional): Free-text description of what the loop should focus on (e.g., "on the work on the new identity system"). When provided, narrows codebase scan and pre-seeds Q&A answers.
 - `--reset`: Skip backup. Overwrite existing files without creating historical copies.
+- `--auto`: Skip all Q&A and derive answers automatically from spec and design docs. Requires `SPEC_PATH` argument (path to the feature spec). When `--auto` is passed, this skill delegates entirely to the `auto-ralph-prep` skill. Equivalent to invoking `/auto-ralph-prep` directly.
+- `SPEC_PATH` (required when `--auto`): Path to the feature spec (e.g., `docs/specs/user-auth-spec.md`)
 
 ## Prerequisites
 
@@ -29,6 +31,21 @@ git rev-parse --is-inside-work-tree
 ```
 
 If this fails, stop and tell the user: "This skill requires a git repository. Initialize one with `git init` first."
+
+---
+
+## Auto Mode Gate
+
+**If `--auto` was passed:**
+
+Invoke the `auto-ralph-prep` skill with the same arguments:
+- Pass `SPEC_PATH` as the spec path
+- Pass `CONTEXT` (if provided) as the design glob context
+- Pass `--slug` derived from the spec filename
+
+Do NOT continue with the phases below — `auto-ralph-prep` handles everything.
+
+**If `--auto` was NOT passed:** Continue with Phase 1 below (interactive Q&A flow).
 
 ---
 
