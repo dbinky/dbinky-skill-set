@@ -91,7 +91,7 @@ Derive from THREE sources, generating a comprehensive list:
 
 **From vertical slice analysis:** Trace end-to-end paths through the system described in the spec — API endpoint -> business logic -> data layer -> response. Each becomes a focus area (Vertical Slice category).
 
-Aim for **10-20 single focus areas**. Each gets 2 review passes, so 20 areas = 40 passes. Consolidate related files into a single area rather than listing each file separately — a focus area should be a logical unit of review, not a single file. Fewer, broader areas are better than many narrow ones.
+Aim for **as many single focus areas as needed for deep coverage of new, impacted, and adjacent code**. Each gets 2 review passes, so 20 areas = 40 passes. Consolidate related files into a single area rather than listing each file separately — a focus area should be a logical unit of review, not a single file. Fewer, broader areas are better than many narrow ones.
 
 ### PAIRED_AREAS
 
@@ -102,7 +102,7 @@ Derive from cross-references between focus areas:
 3. **Vertical Slice Handoffs** — A slice paired with a component it passes through
 4. **Cross-Cutting Consistency** — A cross-cutting concern paired with a specific component
 
-Each paired area gets 1 review pass. Aim for **5-15 paired areas** — focus on the highest-risk integration seams rather than exhaustively pairing everything.
+Each paired area gets 1 review pass. Aim for **sufficient coverage to assure boundary and call pattern correctness** — focus on the highest-risk integration seams rather than exhaustively pairing everything.
 
 ### CHECKLIST
 
@@ -111,7 +111,7 @@ Always include these 3 universal items:
 2. No open issues in `docs/reference/gaps-identified.md` for this focus area
 3. The focus area is complete and polished — you'd be proud to ship it
 
-Add 1-3 items derived from:
+Add items derived from:
 - Spec acceptance criteria -> "Code aligns with the spec at `{SPEC_PATH}`"
 - Design doc existence -> "Implementation matches the design doc"
 - Architecture patterns (if hexagonal/layered detected) -> "Module boundaries are clean"

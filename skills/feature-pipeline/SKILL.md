@@ -26,7 +26,7 @@ The orchestrator will:
 1. Parse arguments and initialize paths
 2. Guide interactive spec brainstorming (user present)
 3. Guide interactive design brainstorming (user present)
-4. Dispatch automated steps as isolated subagents — alignment, planning, implementation, ralph submission
+4. Dispatch automated steps as isolated subagents — alignment, planning, second alignment, implementation, ralph planning, ralph submission
 5. Notify Teams at key milestones
 6. Report final status
 

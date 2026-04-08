@@ -12,7 +12,7 @@ You are submitting work to ralph-o-matic for iterative refinement with zero user
 Parse the following from the user's command or calling skill:
 
 - `--priority LEVEL`: Job priority — high, normal, low (default: high)
-- `--max-iterations N`: Max ralph loop iterations (default: 200)
+- `--max-iterations N`: Max ralph loop iterations (default: 1000)
 - `--local`: Use local repo directory (default: true)
 - `--slug SLUG`: Feature slug for notification messages (optional)
 

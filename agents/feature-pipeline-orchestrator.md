@@ -45,13 +45,17 @@ PLAN_GLOB    = docs/superpowers/plans/{SLUG}-implementation-phase-*-task-*.md
 mkdir -p docs/specs docs/superpowers/specs docs/superpowers/plans
 ```
 
-### 1.5 -- Announce
+### 1.5 -- Branch
+Check if git is already switched into what would appear to be a feature branch (e.g. NOT `main`, NOT `master`, NOT `dev`, etc).  If git already appears to be in a feature branch, confirm that with the user.  If git is in a non-feature branch, create a new branch as `dev-{SLUG}` and switch to it before continuing.
+
+### 1.6 -- Announce
 
 Output to the user:
 
 ```
 Feature pipeline initialized:
   Slug:           {SLUG}
+  Branch:         {git branch name from step 1.5}
   Spec:           {SPEC_PATH}
   Designs:        {DESIGN_GLOB}
   Plans:          {PLAN_GLOB}
@@ -105,7 +109,10 @@ Invoke the `superpowers:brainstorming` skill again with this prompt:
 > multiple phases of work and we want to create a separate design document for
 > each logical phase. Those documents will be stored as `{DESIGN_GLOB}`. Read
 > through the spec thoroughly for context and then let's figure out the high
-> level implementation details for these design docs.
+> level implementation details for these design docs.  Additionally, when
+> considering testing (at design presentation time), we need to require strict 
+> TDD with tests for happy path scenarios, success scenarios, failure scenarios, 
+> error scenarios, and edge case scenarios.
 
 Wait for the skill to complete.
 
@@ -176,7 +183,7 @@ should not block the pipeline.
 
 ## Phase 5: Design Alignment (SUBAGENT)
 
-Dispatch an isolated subagent to review and align the design docs against the spec.
+Dispatch an isolated subagent to review and align the design docs against the spec and each other.
 
 ### 5.1 -- Dispatch
 
@@ -193,8 +200,8 @@ Dispatch via **Agent** tool:
     feature spec. Read your agent file at `{AGENT_FILE_PATH}` first. Then read
     the spec at `{SPEC_PATH}` and ALL design docs matching `{DESIGN_GLOB}`.
     Review them holistically for alignment -- terminology, data models, API
-    contracts, use cases, dependencies, and completeness. Fix any issues
-    directly in the design docs. Commit with message
+    contracts, use cases, dependencies, and completeness as a body of work.
+    Fix any issues directly in the design docs. Commit with message
     `docs: align {SLUG} design phases to spec`. The user is unavailable."
 
 ### 5.2 -- Verify
@@ -237,8 +244,8 @@ Dispatch via **Agent** tool:
   - Instruction: "Write detailed implementation plans for a feature. Read the
     spec at `{SPEC_PATH}` and ALL design docs matching `{DESIGN_GLOB}`. For
     each design phase, use the `superpowers:writing-plans` skill to produce
-    detailed, code-level implementation plans. Each design phase may produce
-    multiple task files. Output naming:
+    separate, detailed, code-level implementation plans. Each design phase may 
+    produce multiple task files. Output naming:
     `docs/superpowers/plans/{SLUG}-implementation-phase-{N}-task-{M}.md`
     where N = phase number and M = task number. Write ALL plans in one
     concerted effort. When done, commit:
@@ -290,8 +297,9 @@ Dispatch via **Agent** tool:
     matching `{PLAN_GLOB}`. Review holistically for:
     - Spec -> design alignment (terminology, requirements coverage)
     - Design -> plan alignment (architectural decisions reflected in tasks)
-    - Plan -> plan alignment (shared types, API contracts, no duplicate work, no gaps)
+    - Plan -> plan alignment (shared types, API contracts, no duplicate work, no gaps, models, interfaces, domains, etc)
     - Dependency ordering (does Task 2 depend on types from Task 1?)
+    - End-to-end correctness as a body of work
     Fix any issues directly in the docs. Commit with message
     `docs: align {SLUG} implementation plans`. The user is unavailable."
 
