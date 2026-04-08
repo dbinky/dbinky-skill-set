@@ -7,6 +7,8 @@ Each **paired focus area** requires **1 full review pass** before being consider
 
 A review pass is only checked when the checklist produces a passing result for that area.
 
+**Progression order:** Complete all Pass 1 single area reviews first. Then do paired area reviews (which catch integration issues while the code is fresh). Then do Pass 2 single area reviews.
+
 ---
 
 ## Table 1: Single Area Reviews (2 passes each)

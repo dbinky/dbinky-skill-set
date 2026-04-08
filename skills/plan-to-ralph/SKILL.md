@@ -326,18 +326,20 @@ You are in an automated prompt loop and the user is unavailable for input, so yo
 
 - **Do NOT use sub-agents for bulk generation.** When you modify or create code, do it by hand, one component at a time, with thought behind each decision.
 - **Read before you write.** Before modifying any file, read the relevant sections. Before claiming something is fine, read it and reason about quality.
-- **One focus area per iteration.** Don't try to fix everything at once. Pick the most important remaining issue within the focus area, fix it well, then let the next iteration handle the next issue.
+- **One focus area, one fix, one commit per iteration.** Pick a focus area. Find issues. Fix the ONE most important issue. Commit, push, and exit. Do not fix a second issue — the next iteration handles it. Small, granular iterations are more reliable than ambitious ones.
 - **Do NOT invent new functionality to fill perceived gaps.** Maintain a list of things you find that should be fixed at `docs/reference/gaps-identified.md` in the `## Open Issues` section. If you perceive there is new, missing functionality beyond the current scope, log it in the `## Won't Fix (Beyond Current Scope)` section. If something on the list has been fixed in a previous loop, move it to `## Fixed Previously`.
 {EXTRA_CONSTRAINTS — each as a new bullet point with bold lead, same format as above}
 
 ## Iteration Structure
 
-1. **Read the Tracking File** — Read `docs/reference/focus-areas.md` and pick a review focus area that hasn't been completed yet. Complete single area reviews before moving to paired area reviews.
+An iteration is one atomic unit: review one area, fix ONE issue, test, commit, exit. Resist the urge to keep fixing — the next iteration picks up where you left off.
+
+1. **Read the Tracking File** — Read `docs/reference/focus-areas.md` and pick a review focus area that hasn't been completed yet. Progression order: complete all **Pass 1** single area reviews, then **paired area** reviews, then **Pass 2** single area reviews.
 2. **Read the Area's Code** — Deeply examine the code for the chosen focus area. Read every file. Understand the patterns.
 3. **Analyze findings and update the gaps list** — Cross-reference what you just read with the design doc and codebase conventions. Add any issues found to `docs/reference/gaps-identified.md` in the `## Open Issues` section.
-4. **Fix the single most important issue** — Fix it well. If the issue spans multiple files, fix all of them consistently. Once fixed, move the issue to `## Fixed Previously` in `docs/reference/gaps-identified.md`.
+4. **Fix the single most important issue, then stop.** Fix it thoroughly — if it spans multiple files, fix all of them consistently. Once fixed, move the issue to `## Fixed Previously` in `docs/reference/gaps-identified.md`. **Then proceed immediately to step 5. Do not fix another issue in this iteration.**
 5. **Run the tests** — Run `{TEST_COMMAND}`. Investigate and fix each failure.
-6. **Assess the checklist** — Evaluate honestly, then proceed to the Wrap Up phase.
+6. **Assess the checklist** — Evaluate honestly, then proceed immediately to the Wrap Up phase. Do not go back to step 4.
 
 ## The Checklist (be brutally honest)
 
@@ -347,20 +349,20 @@ Do NOT check a box unless you could defend it in a code review:
 
 ## Wrap Up
 
-This is the final phase of every iteration. Follow these steps in order.
+This is the final phase of every iteration. Follow these steps in order. **Do not go back to fix more issues — this iteration is done.**
 
-**Step A — Determine if this focus area passed review.**
+**Step A — Commit and push your branch to remote.**
 
-All checklist boxes must be honestly checked for the focus area to pass. There is no partial credit. Don't feel bad if it didn't pass — that just means the next iteration will take another crack at it. Improving things each cycle is a successful outcome.
+Always commit and push first. Every iteration that fixes something is valuable, regardless of checklist status.
 
-**Step B — Update tracking (only if the focus area passed).**
+**Step B — Determine if this focus area passed review.**
+
+All checklist boxes must be honestly checked for the focus area to pass. **Most focus areas take 2-5 iterations to pass — this is normal and expected.** A failing checklist simply means this area needs another iteration. Every iteration that commits a fix is a successful outcome.
+
+**Step C — Update tracking (only if the focus area passed).**
 
 - If the focus area **passed**: Mark that focus area's review as complete in `docs/reference/focus-areas.md`.
-- If the focus area **did not pass**: Do NOT update `docs/reference/focus-areas.md`.
-
-**Step C — Commit and push your branch to remote.**
-
-Always commit and push, whether the focus area passed or not. Your work this iteration is valuable either way.
+- If the focus area **did not pass**: Do NOT update `docs/reference/focus-areas.md`. The next iteration will pick this area up again.
 
 **Step D — Output your promise tag and stop.**
 
@@ -385,6 +387,8 @@ Each **single focus area** requires **2 full review passes** before being consid
 Each **paired focus area** requires **1 full review pass** before being considered done.
 
 A review pass is only checked when the checklist produces a passing result for that area.
+
+**Progression order:** Complete all Pass 1 single area reviews first. Then do paired area reviews (which catch integration issues while the code is fresh). Then do Pass 2 single area reviews.
 
 ---
 
