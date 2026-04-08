@@ -34,6 +34,42 @@
       "skills": [
         "./skills/plan-to-ralph"
       ]
+    },
+    {
+      "name": "feature-pipeline",
+      "source": "./",
+      "description": "End-to-end feature automation — interactive brainstorm for spec and design, then automated alignment, planning, implementation, ralph refinement loop, and PR review.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/feature-pipeline"
+      ]
+    },
+    {
+      "name": "auto-ralph-prep",
+      "source": "./",
+      "description": "Automatically generate ralph loop files (RALPH.md, focus-areas.md, gaps-identified.md) from spec and design docs without interactive Q&A.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/auto-ralph-prep"
+      ]
+    },
+    {
+      "name": "auto-ralph-submit",
+      "source": "./",
+      "description": "Non-interactive submission to ralph-o-matic with sensible defaults — pre-flight checks, auto-commit, auto-push, and Teams notification.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/auto-ralph-submit"
+      ]
+    },
+    {
+      "name": "spec-to-design",
+      "source": "./",
+      "description": "Automated pipeline from spec+designs through alignment, planning, plan alignment, and draft implementation — runs steps 3-6 with zero interaction.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/spec-to-design"
+      ]
     }
   ]
 }
