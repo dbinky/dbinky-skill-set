@@ -1,6 +1,6 @@
 ---
 name: feature-pipeline
-description: End-to-end feature automation — interactive brainstorm for spec and design, then automated alignment, planning, implementation, ralph refinement loop, and PR review
+description: End-to-end feature automation — interactive brainstorm for spec and design, then automated alignment, planning, implementation, ralph refinement, and PR review
 ---
 
 # Feature Pipeline

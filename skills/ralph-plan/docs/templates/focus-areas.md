@@ -1,6 +1,6 @@
 # Focus Areas
 
-The focus areas document controls how we proceed through the codebase during a ralph loop refinement.  It is intended to give us a structured approach to finding and fixing issues.
+The focus areas document controls how we proceed through the codebase during a ralph refinement run.  It is intended to give us a structured approach to finding and fixing issues.
 
 There are 2 sections:
 

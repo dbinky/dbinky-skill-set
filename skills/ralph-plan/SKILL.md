@@ -1,11 +1,11 @@
 ---
 name: ralph-plan
-description: Automate ralph loop setup — backs up existing tracking docs, copies templates, populates focus areas from branch changes or user-specified scope, and links available design docs into RALPH.md
+description: Automate ralph review setup — backs up existing tracking docs, copies templates, populates focus areas from branch changes or user-specified scope, and links available design docs into RALPH.md
 ---
 
 # Ralph Plan
 
-Prepare a project for a ralph refinement loop by setting up tracking documents and populating them based on the work scope.
+Prepare a project for a ralph refinement run by setting up tracking documents and populating them based on the work scope.
 
 ## Usage
 
@@ -77,7 +77,9 @@ The templates live in this skill's directory. Copy them to the project if they d
 
 Create `docs/reference/` if it doesn't exist.
 
-**If `RALPH.md` already exists** in the project root, do NOT overwrite it — it may have been customized. Instead, just update the Design Specs section in Phase 6.
+**If `RALPH.md` already exists** in the project root, check if it uses the legacy loop-centric format. Read the first 5 lines — if the file contains `# Loop Instructions` or the phrase `automated prompt loop`, it is a legacy template. Delete it and copy the fresh template. Report: "Replaced legacy loop-format RALPH.md with current template."
+
+**If `RALPH.md` already exists and is NOT legacy**, do NOT overwrite it — it may have been customized. Instead, just update the Design Specs section in Phase 6.
 
 **If tracking docs already exist** (after backup in Phase 2), overwrite them with fresh templates since we already backed up the originals.
 
@@ -85,7 +87,7 @@ Create `docs/reference/` if it doesn't exist.
 
 ## Phase 4: Clear Gaps Identified
 
-Reset `docs/reference/gaps-identified.md` to the clean template state — all sections should show `_(none)_` or `_(none yet)_`. This prepares for a fresh loop run.
+Reset `docs/reference/gaps-identified.md` to the clean template state — all sections should show `_(none)_` or `_(none yet)_`. This prepares for a fresh run.
 
 If this file was just copied from templates in Phase 3, this is already done. If it existed and was backed up, overwrite it now with the template content.
 
@@ -149,7 +151,7 @@ If no documentation is found, note that in the section:
 ```markdown
 ## Design Specs
 
-_(no design docs found — consider creating a spec before running the loop)_
+_(no design docs found — consider creating a spec before running the review)_
 ```
 
 ---
@@ -159,14 +161,14 @@ _(no design docs found — consider creating a spec before running the loop)_
 Show the user what was done:
 
 ```
-Ralph loop prepared:
+Ralph review prepared:
 
   Scope: {one-line scope description}
   Backups: {backup status — "plan #N for YYYY-MM-DD" or "none needed"}
 
   RALPH.md — {created from template / updated design specs}
   docs/reference/focus-areas.md — {N single + M paired = T total reviews}
-  docs/reference/gaps-identified.md — cleared for new loop
+  docs/reference/gaps-identified.md — cleared for new run
 
-Ready to run the ralph loop with /direct-to-ralph
+Ready to start with /direct-to-ralph
 ```

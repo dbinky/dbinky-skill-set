@@ -1,23 +1,23 @@
 ---
 name: plan-to-ralph
-description: Generate ralph-o-matic loop files via interactive Q&A or automatic derivation (--auto) from spec and design docs
+description: Generate ralph-o-matic review files via interactive Q&A or automatic derivation (--auto) from spec and design docs
 ---
 
 # Plan to Ralph
 
-You are generating ralph-o-matic loop files through interactive Q&A. This skill produces three files that configure a ralph refinement loop:
+You are generating ralph-o-matic review files through interactive Q&A. This skill produces three files that configure a ralph refinement run:
 
-- `RALPH.md` — Loop instructions (persona, mission, iteration structure, checklist, promise tags)
+- `RALPH.md` — Review instructions (persona, mission, steps, checklist, promise tags)
 - `docs/reference/focus-areas.md` — Review tracking table (single areas with 2 passes, paired areas with 1 pass)
 - `docs/reference/gaps-identified.md` — Issue tracker (open, fixed, won't-fix sections)
 
-After generating these files, the user runs `/direct-to-ralph` or `ralph-o-matic submit` to start the loop.
+After generating these files, the user runs `/direct-to-ralph` or `ralph-o-matic submit` to start the review.
 
 ## Arguments
 
 Parse the following from the user's command:
 
-- `CONTEXT` (optional): Free-text description of what the loop should focus on (e.g., "on the work on the new identity system"). When provided, narrows codebase scan and pre-seeds Q&A answers.
+- `CONTEXT` (optional): Free-text description of what the review should focus on (e.g., "on the work on the new identity system"). When provided, narrows codebase scan and pre-seeds Q&A answers.
 - `--reset`: Skip backup. Overwrite existing files without creating historical copies.
 - `--auto`: Skip all Q&A and derive answers automatically from spec and design docs. Requires `SPEC_PATH` argument (path to the feature spec). When `--auto` is passed, this skill delegates entirely to the `auto-ralph-prep` skill. Equivalent to invoking `/auto-ralph-prep` directly.
 - `SPEC_PATH` (required when `--auto`): Path to the feature spec (e.g., `docs/specs/user-auth-spec.md`)
@@ -71,6 +71,12 @@ Check if any of these files exist:
 4. If a same-day backup already exists, append a counter: `-2`, `-3`, etc. For example, if `2026-03-12-historical-RALPH.md` already exists, use `2026-03-12-historical-RALPH-2.md`.
 5. Tell the user what was backed up: "Backed up existing files to `docs/reference/historical/`."
 
+### Migrate legacy template
+
+After backup, check if the existing `RALPH.md` uses the legacy loop-centric format. Read the first 5 lines — if the file contains `# Loop Instructions` or the phrase `automated prompt loop`, it is a legacy template.
+
+If legacy: delete `RALPH.md` from the working tree (it was already backed up). Tell the user: "Existing RALPH.md uses the legacy loop format — regenerating with the current template." Phase 4 will create a fresh one.
+
 ---
 
 ## Phase 2: Scan
@@ -114,11 +120,11 @@ Ask questions **one at a time**. Skip questions that CONTEXT already answers.
 
 **Skip if CONTEXT provides a clear description of what to review.**
 
-Ask: "What should this ralph loop review and improve? Describe the feature, system, or area of code."
+Ask: "What should this ralph review improve? Describe the feature, system, or area of code."
 
 Store the answer as `MISSION`.
 
-If CONTEXT was provided, use it as the MISSION and tell the user: "Based on your context, the loop will focus on: {CONTEXT}. Sound right?" Accept corrections.
+If CONTEXT was provided, use it as the MISSION and tell the user: "Based on your context, the review will focus on: {CONTEXT}. Sound right?" Accept corrections.
 
 ### Question 2: Test Command
 
@@ -250,7 +256,7 @@ Store the final list as `PAIRED_AREAS`.
 Present the proposed checklist:
 
 ```
-Proposed review checklist (assessed each iteration):
+Proposed review checklist (assessed each pass):
 
 Universal (always included):
   [1] All tests pass (`{TEST_COMMAND}`)
@@ -277,10 +283,10 @@ Store the final checklist as `CHECKLIST`.
 Present the standard constraints that are always included:
 
 ```
-These constraints are always included in the loop:
+These constraints are always included:
 - No sub-agents for bulk generation
 - Read before you write
-- One focus area per iteration
+- One focus area, one fix, one commit
 - Don't invent new functionality (log gaps instead)
 
 Any project-specific constraints to add? (e.g., "Do NOT write Python scripts for analysis", "Run linting after every change"). Enter to skip.
@@ -305,9 +311,9 @@ Match the formatting, section structure, and HTML comment patterns from these ex
 Write `RALPH.md` in the repository root with this structure (substitute all `{VARIABLES}` with values from Q&A):
 
 ```markdown
-# Loop Instructions
+# Review Instructions
 
-You are in an automated prompt loop and the user is unavailable for input, so you should just do the work without asking for any user input.
+You are an automated code reviewer. The user is unavailable — do the work without asking for input.
 
 ## Persona
 
@@ -315,29 +321,29 @@ You are in an automated prompt loop and the user is unavailable for input, so yo
 
 ## Your Mission
 
-{MISSION_DESCRIPTION — expand the MISSION into 1-3 paragraphs describing what was built, what the loop is reviewing, and what "done" looks like}
+{MISSION_DESCRIPTION — expand the MISSION into 1-3 paragraphs describing what was built, what the review covers, and what "done" looks like}
 
 ## Tracking System
 
-- At the start of an iteration, read `docs/reference/focus-areas.md`. Each single area (from table 1) needs **2 review passes** before being considered __done__. Each paired area (from table 2) needs **1 review pass** before being considered __done__. Use this document to track which reviews have been advanced and completed.
-- DO NOT update this document until the "Wrap Up" phase at the end of each iteration. Updating is conditional on your checklist assessment.
+- Read `docs/reference/focus-areas.md` before starting. Each single area (from table 1) needs **2 review passes** before being considered __done__. Each paired area (from table 2) needs **1 review pass** before being considered __done__. Use this document to track which reviews have been advanced and completed.
+- DO NOT update this document until the "Wrap Up" phase. Updating is conditional on your checklist assessment.
 
 ## Constraints
 
 - **Do NOT use sub-agents for bulk generation.** When you modify or create code, do it by hand, one component at a time, with thought behind each decision.
 - **Read before you write.** Before modifying any file, read the relevant sections. Before claiming something is fine, read it and reason about quality.
-- **One focus area, one fix, one commit per iteration.** Pick a focus area. Find issues. Fix the ONE most important issue. Commit, push, and exit. Do not fix a second issue — the next iteration handles it. Small, granular iterations are more reliable than ambitious ones.
-- **Do NOT invent new functionality to fill perceived gaps.** Maintain a list of things you find that should be fixed at `docs/reference/gaps-identified.md` in the `## Open Issues` section. If you perceive there is new, missing functionality beyond the current scope, log it in the `## Won't Fix (Beyond Current Scope)` section. If something on the list has been fixed in a previous loop, move it to `## Fixed Previously`.
+- **One focus area, one fix, one commit.** Pick a focus area. Find issues. Fix the ONE most important issue. Commit, push, and stop. Do not fix a second issue. Small, focused passes are more reliable than ambitious ones.
+- **Do NOT invent new functionality to fill perceived gaps.** Maintain a list of things you find that should be fixed at `docs/reference/gaps-identified.md` in the `## Open Issues` section. If you perceive there is new, missing functionality beyond the current scope, log it in the `## Won't Fix (Beyond Current Scope)` section. If something on the list has been fixed previously, move it to `## Fixed Previously`.
 {EXTRA_CONSTRAINTS — each as a new bullet point with bold lead, same format as above}
 
-## Iteration Structure
+## Steps
 
-An iteration is one atomic unit: review one area, fix ONE issue, test, commit, exit. Resist the urge to keep fixing — the next iteration picks up where you left off.
+Review one area, fix ONE issue, test, commit, stop. Resist the urge to keep fixing.
 
 1. **Read the Tracking File** — Read `docs/reference/focus-areas.md` and pick a review focus area that hasn't been completed yet. Progression order: complete all **Pass 1** single area reviews, then **paired area** reviews, then **Pass 2** single area reviews.
 2. **Read the Area's Code** — Deeply examine the code for the chosen focus area. Read every file. Understand the patterns.
 3. **Analyze findings and update the gaps list** — Cross-reference what you just read with the design doc and codebase conventions. Add any issues found to `docs/reference/gaps-identified.md` in the `## Open Issues` section.
-4. **Fix the single most important issue, then stop.** Fix it thoroughly — if it spans multiple files, fix all of them consistently. Once fixed, move the issue to `## Fixed Previously` in `docs/reference/gaps-identified.md`. **Then proceed immediately to step 5. Do not fix another issue in this iteration.**
+4. **Fix the single most important issue, then stop.** Fix it thoroughly — if it spans multiple files, fix all of them consistently. Once fixed, move the issue to `## Fixed Previously` in `docs/reference/gaps-identified.md`. **Proceed immediately to step 5. Do not fix another issue.**
 5. **Run the tests** — Run `{TEST_COMMAND}`. Investigate and fix each failure.
 6. **Assess the checklist** — Evaluate honestly, then proceed immediately to the Wrap Up phase. Do not go back to step 4.
 
@@ -349,20 +355,20 @@ Do NOT check a box unless you could defend it in a code review:
 
 ## Wrap Up
 
-This is the final phase of every iteration. Follow these steps in order. **Do not go back to fix more issues — this iteration is done.**
+Follow these steps in order. **Do not go back to fix more issues.**
 
 **Step A — Commit and push your branch to remote.**
 
-Always commit and push first. Every iteration that fixes something is valuable, regardless of checklist status.
+Always commit and push first. Your work is valuable regardless of checklist status.
 
 **Step B — Determine if this focus area passed review.**
 
-All checklist boxes must be honestly checked for the focus area to pass. **Most focus areas take 2-5 iterations to pass — this is normal and expected.** A failing checklist simply means this area needs another iteration. Every iteration that commits a fix is a successful outcome.
+All checklist boxes must be honestly checked for the focus area to pass. **Most focus areas need 2-5 passes — this is normal and expected.** A failing checklist simply means this area needs another pass. Every commit that fixes something is a successful outcome.
 
 **Step C — Update tracking (only if the focus area passed).**
 
 - If the focus area **passed**: Mark that focus area's review as complete in `docs/reference/focus-areas.md`.
-- If the focus area **did not pass**: Do NOT update `docs/reference/focus-areas.md`. The next iteration will pick this area up again.
+- If the focus area **did not pass**: Do NOT update `docs/reference/focus-areas.md`.
 
 **Step D — Output your promise tag and stop.**
 
@@ -371,7 +377,7 @@ Check `docs/reference/focus-areas.md`. Are ALL reviews (single areas and paired 
 - If **all reviews are complete**: output `<promise>FINIT</promise>`
 - If **any reviews remain incomplete**: output `<promise>CLOSER</promise>`
 
-Output exactly one `<promise>` tag, then stop. Do not output anything after the tag. The next iteration will carry on your good work.
+Output exactly one `<promise>` tag, then stop. Do not output anything after the tag.
 ```
 
 ### Generate docs/reference/focus-areas.md
@@ -442,7 +448,7 @@ Write `docs/reference/gaps-identified.md`:
 ```markdown
 # Gaps Identified
 
-Issues found during review iterations. Only the user can move items to the Won't Fix sections.
+Issues found during review. Only the user can move items to the Won't Fix sections.
 
 ## Open Issues
 
@@ -462,7 +468,7 @@ _(none yet)_
 Show the user a summary:
 
 ```
-Ralph loop files generated:
+Ralph review files generated:
 
   RALPH.md
     Persona:      {first sentence of PERSONA}
@@ -492,13 +498,13 @@ Stage and commit all generated files plus any historical backups:
 git add RALPH.md docs/reference/focus-areas.md docs/reference/gaps-identified.md
 # Also stage historical backups if they were created
 git add docs/reference/historical/ 2>/dev/null || true
-git commit -m "chore: generate ralph loop files via plan-to-ralph"
+git commit -m "chore: generate ralph review files via plan-to-ralph"
 ```
 
 Tell the user:
 
 ```
-Loop files committed. To start the ralph loop:
+Review files committed. To start the ralph review:
 
   /direct-to-ralph "{MISSION_SHORT}"
 

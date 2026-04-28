@@ -1,11 +1,11 @@
 ---
 name: auto-ralph-prep
-description: Automatically generate ralph loop files (RALPH.md, focus-areas.md, gaps-identified.md) from spec and design docs without interactive Q&A
+description: Automatically generate ralph review files (RALPH.md, focus-areas.md, gaps-identified.md) from spec and design docs without interactive Q&A
 ---
 
 # Auto Ralph Prep
 
-You are generating ralph-o-matic loop files without user interaction. This skill derives all configuration from the feature spec, design docs, implementation plans, and codebase scan — replacing the interactive Q&A in `plan-to-ralph`.
+You are generating ralph-o-matic review files without user interaction. This skill derives all configuration from the feature spec, design docs, implementation plans, and codebase scan — replacing the interactive Q&A in `plan-to-ralph`.
 
 This is invoked either directly (`/auto-ralph-prep`) or via `plan-to-ralph --auto`.
 
@@ -41,6 +41,12 @@ If any exist, back them up using the same pattern as `plan-to-ralph`:
 2. Copy each existing file to `YYYY-MM-DD-historical-{filename}.md`
 3. Append counter `-2`, `-3` for same-day collisions
 
+### Migrate legacy template
+
+After backup, check if the existing `RALPH.md` uses the legacy loop-centric format. Read the first 5 lines — if the file contains `# Loop Instructions` or the phrase `automated prompt loop`, it is a legacy template.
+
+If legacy: delete `RALPH.md` from the working tree (it was already backed up). Phase 5 will create a fresh one from the current template.
+
 ## Phase 2: Read Inputs
 
 Read these files in full:
@@ -62,7 +68,7 @@ Derive all 7 values that `plan-to-ralph` normally asks interactively:
 
 Extract from the spec's purpose/goal/overview section. Format as:
 
-> Review and refine the implementation of {feature description} per the spec at `{SPEC_PATH}`. The loop should verify correctness against the spec, ensure test coverage, fix gaps, and polish the implementation to production quality.
+> Review and refine the implementation of {feature description} per the spec at `{SPEC_PATH}`. Verify correctness against the spec, ensure test coverage, fix gaps, and polish the implementation to production quality.
 
 ### TEST_COMMAND
 
@@ -144,7 +150,7 @@ The templates are identical to those in the `plan-to-ralph` skill — reference 
 ```bash
 git add RALPH.md docs/reference/focus-areas.md docs/reference/gaps-identified.md
 git add docs/reference/historical/ 2>/dev/null || true
-git commit -m "chore: generate ralph loop files for {SLUG}"
+git commit -m "chore: generate ralph review files for {SLUG}"
 ```
 
 ## Phase 7: Report
@@ -152,7 +158,7 @@ git commit -m "chore: generate ralph loop files for {SLUG}"
 Output a brief summary (no user review needed):
 
 ```
-Ralph loop files generated for {SLUG}:
+Ralph review files generated for {SLUG}:
   RALPH.md              — {PERSONA_FIRST_SENTENCE}
   focus-areas.md        — {N} single areas, {M} paired areas ({TOTAL} review passes)
   gaps-identified.md    — empty template

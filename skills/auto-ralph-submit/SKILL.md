@@ -12,7 +12,7 @@ You are submitting work to ralph-o-matic for iterative refinement with zero user
 Parse the following from the user's command or calling skill:
 
 - `--priority LEVEL`: Job priority — high, normal, low (default: high)
-- `--max-iterations N`: Max ralph loop iterations (default: 1000)
+- `--max-iterations N`: Max ralph passes (default: 1000)
 - `--local`: Use local repo directory (default: true)
 - `--slug SLUG`: Feature slug for notification messages (optional)
 
@@ -72,7 +72,7 @@ Capture the job ID from the output.
 ### Step 5: Notify Teams
 
 ```bash
-ralph-o-matic notify --message "Ralph loop started for {SLUG} on branch {BRANCH} — Job #{JOB_ID}, {MAX_ITERATIONS} max iterations. Dashboard: {SERVER_URL}/jobs/{JOB_ID}"
+ralph-o-matic notify --message "Ralph started for {SLUG} on branch {BRANCH} — Job #{JOB_ID}, {MAX_ITERATIONS} max passes. Dashboard: {SERVER_URL}/jobs/{JOB_ID}"
 ```
 
 ### Step 6: Report

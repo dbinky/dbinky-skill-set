@@ -355,7 +355,7 @@ git log --oneline -5
 make test 2>&1 | tail -20
 ```
 
-If tests are failing, note this but continue -- the ralph refinement loop
+If tests are failing, note this but continue -- ralph refinement
 will address remaining issues.
 
 ### 8.3 -- On Failure
@@ -372,7 +372,7 @@ Stop the pipeline.
 
 ## Phase 9: Ralph Prep (SUBAGENT)
 
-Dispatch an isolated subagent to generate ralph-o-matic loop files.
+Dispatch an isolated subagent to generate ralph-o-matic review files.
 
 ### 9.1 -- Dispatch
 
@@ -384,7 +384,7 @@ Dispatch via **Agent** tool:
   - Spec path: `{SPEC_PATH}`
   - Design glob: `{DESIGN_GLOB}`
   - Plan glob: `{PLAN_GLOB}`
-  - Instruction: "Generate ralph-o-matic loop files for the feature '{SLUG}'.
+  - Instruction: "Generate ralph-o-matic review files for the feature '{SLUG}'.
     Invoke the `auto-ralph-prep` skill with SPEC_PATH={SPEC_PATH},
     DESIGN_GLOB={DESIGN_GLOB}, PLAN_GLOB={PLAN_GLOB}, and --slug {SLUG}.
     The user is unavailable for input. Follow the skill's instructions to
@@ -405,7 +405,7 @@ If RALPH.md is missing, this is a failure. Go to 9.3.
 ### 9.3 -- On Failure
 
 ```bash
-ralph-o-matic notify --message "Pipeline failed generating ralph loop files for {SLUG}. Error: {ERROR}. Resume: /auto-ralph-prep --spec {SPEC_PATH}"
+ralph-o-matic notify --message "Pipeline failed generating ralph review files for {SLUG}. Error: {ERROR}. Resume: /auto-ralph-prep --spec {SPEC_PATH}"
 ```
 
 Stop the pipeline.
@@ -467,10 +467,10 @@ Feature pipeline complete for {SLUG}:
   Designs:        {DESIGN_COUNT} phase docs
   Plans:          {PLAN_COUNT} task docs
   Implementation: committed and tested
-  Ralph loop:     Job #{JOB_ID} submitted
+  Ralph:          Job #{JOB_ID} submitted
 
 What happens next (automated):
-  1. Ralph runs the refinement loop ({MAX_ITERATIONS} max iterations)
+  1. Ralph runs the refinement review ({MAX_ITERATIONS} max passes)
   2. Post-completion hook triggers PR review automatically
   3. PR review applies all fixes except "Defer" ranked
   4. You'll get a Teams notification when the PR is ready
@@ -513,7 +513,7 @@ If a verification check fails (file doesn't exist, tests fail, etc.):
 - For **missing files** (spec, designs, plans, RALPH.md): this is a hard failure.
   Notify and stop.
 - For **failing tests** after implementation: this is acceptable. Note the
-  failures and continue -- the ralph refinement loop will fix them.
+  failures and continue -- ralph refinement will fix them.
 
 ---
 
