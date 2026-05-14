@@ -10,6 +10,7 @@
   "repository": "https://github.com/dbinky/dbinky-skill-set",
   "license": "MIT",
   "skills": [
-    "./skills/pr-review"
+    "./skills/pr-review",
+    "./skills/curating-code"
   ]
 }
