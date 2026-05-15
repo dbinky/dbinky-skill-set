@@ -70,6 +70,15 @@
       "skills": [
         "./skills/spec-to-design"
       ]
+    },
+    {
+      "name": "curating-code",
+      "source": "./",
+      "description": "Analyze a codebase for vibe-coding cruft — dead code, excessive complexity, duplication, and inconsistent patterns — then selectively fix issues to produce clean, senior-engineer-quality code.",
+      "version": "1.0.0",
+      "skills": [
+        "./skills/curating-code"
+      ]
     }
   ]
 }
