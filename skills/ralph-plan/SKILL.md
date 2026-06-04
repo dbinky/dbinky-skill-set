@@ -44,32 +44,36 @@ Store the result as `SCOPE` — a description of what's being reviewed plus the 
 
 ---
 
-## Phase 2: Backup Previous Documents
+## Phase 2: Archive Previous Documents
 
 Check for existing files:
+- `RALPH.md`
 - `docs/reference/gaps-identified.md`
 - `docs/reference/focus-areas.md`
 
-**If neither exists:** Skip to Phase 3.
+**If none exist:** Skip to Phase 3.
 
-**If either exists:**
+**If any exist:**
 
 1. Determine today's date as `YYYY-MM-DD`.
-2. Count existing historical backups for today to determine the intra-day plan number:
+2. Determine the intra-day plan number — count today's existing backups (using one representative file type so the count is robust regardless of how many files each backup contains) and add 1:
    ```bash
-   ls docs/reference/YYYY-MM-DD-historical-* 2>/dev/null | wc -l
+   echo $(( $(ls docs/reference/YYYY-MM-DD-historical-focus-areas-*.md 2>/dev/null | wc -l) + 1 ))
    ```
-   The plan number is `(count / 2) + 1` (since each backup creates 2 files). If zero exist, plan number is 1.
-3. For each existing file, copy it:
+   If zero exist, the plan number is 1.
+3. For each existing file, **move (rename) it** — do NOT copy it. The original must no longer exist at its working-tree location afterward:
+   - `RALPH.md` → `docs/reference/YYYY-MM-DD-historical-RALPH-{plan#}.md`
    - `gaps-identified.md` → `docs/reference/YYYY-MM-DD-historical-gaps-identified-{plan#}.md`
    - `focus-areas.md` → `docs/reference/YYYY-MM-DD-historical-focus-areas-{plan#}.md`
-4. Report: "Backed up existing tracking docs as plan #{plan#} for {date}."
+4. Report: "Archived existing tracking docs as plan #{plan#} for {date}."
+
+**Why move instead of copy:** Phase 3 lays down fresh templates that carry the required control semantics — notably the `<promise>` tag logic that lets the ralph server stop after repeated "no progress" iterations. Moving the originals out (rather than copying) guarantees they are absent in Phase 3, so a previously mangled `RALPH.md` whose `<promise>` logic was stripped can never survive into the new run.
 
 ---
 
 ## Phase 3: Copy Templates
 
-The templates live in this skill's directory. Copy them to the project if they don't already exist:
+After Phase 2, none of the tracking files exist in the working tree — any that existed were moved into the historical archive. Copy the fresh templates from this skill's directory:
 
 - `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/templates/RALPH.md` → `RALPH.md` (project root)
 - `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/templates/gaps-identified.md` → `docs/reference/gaps-identified.md`
@@ -77,19 +81,13 @@ The templates live in this skill's directory. Copy them to the project if they d
 
 Create `docs/reference/` if it doesn't exist.
 
-**If `RALPH.md` already exists** in the project root, check if it uses the legacy loop-centric format. Read the first 5 lines — if the file contains `# Loop Instructions` or the phrase `automated prompt loop`, it is a legacy template. Delete it and copy the fresh template. Report: "Replaced legacy loop-format RALPH.md with current template."
-
-**If `RALPH.md` already exists and is NOT legacy**, do NOT overwrite it — it may have been customized. Instead, just update the Design Specs section in Phase 6.
-
-**If tracking docs already exist** (after backup in Phase 2), overwrite them with fresh templates since we already backed up the originals.
+**Always copy `RALPH.md` from the template — never preserve an existing one.** Because Phase 2 archived and removed any prior `RALPH.md`, this guarantees every run starts from a template with intact control semantics (the `<promise>` tag logic), regardless of whether the previous file was legacy-format, customized, or mangled. Anything worth keeping from the old file lives in its archived copy under `docs/reference/`; Phase 6 re-applies the Design Specs links to the fresh file.
 
 ---
 
 ## Phase 4: Clear Gaps Identified
 
-Reset `docs/reference/gaps-identified.md` to the clean template state — all sections should show `_(none)_` or `_(none yet)_`. This prepares for a fresh run.
-
-If this file was just copied from templates in Phase 3, this is already done. If it existed and was backed up, overwrite it now with the template content.
+`docs/reference/gaps-identified.md` was just written from the template in Phase 3, so it is already in the clean state — all sections show `_(none)_` or `_(none yet)_`. Confirm this; no further action is needed.
 
 ---
 
