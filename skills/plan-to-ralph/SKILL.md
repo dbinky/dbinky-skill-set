@@ -60,22 +60,18 @@ Check if any of these files exist:
 
 **If none exist:** Skip silently to Phase 2.
 
-**If any exist:** Back them up before overwriting.
+**If any exist:** Archive them before regenerating.
 
 1. Create `docs/reference/historical/` if it doesn't exist.
 2. Get today's date as `YYYY-MM-DD`.
-3. For each existing file, copy it to `docs/reference/historical/` with the naming pattern:
+3. For each existing file, **move (rename) it** into `docs/reference/historical/` with the naming pattern — do NOT copy it. The original must no longer exist at its working-tree location afterward:
    - `RALPH.md` → `YYYY-MM-DD-historical-RALPH.md`
    - `focus-areas.md` → `YYYY-MM-DD-historical-focus-areas.md`
    - `gaps-identified.md` → `YYYY-MM-DD-historical-gaps-identified.md`
 4. If a same-day backup already exists, append a counter: `-2`, `-3`, etc. For example, if `2026-03-12-historical-RALPH.md` already exists, use `2026-03-12-historical-RALPH-2.md`.
-5. Tell the user what was backed up: "Backed up existing files to `docs/reference/historical/`."
+5. Tell the user what was archived: "Archived existing files to `docs/reference/historical/`."
 
-### Migrate legacy template
-
-After backup, check if the existing `RALPH.md` uses the legacy loop-centric format. Read the first 5 lines — if the file contains `# Loop Instructions` or the phrase `automated prompt loop`, it is a legacy template.
-
-If legacy: delete `RALPH.md` from the working tree (it was already backed up). Tell the user: "Existing RALPH.md uses the legacy loop format — regenerating with the current template." Phase 4 will create a fresh one.
+**Why move instead of copy:** Phase 4 regenerates each file fresh from the template in this skill, which carries the required control semantics — notably the `<promise>` tag logic that lets the ralph server stop after repeated "no progress" iterations. If the old files stayed in place, a previously mangled `RALPH.md` (one whose `<promise>` logic was stripped by an earlier run) could survive or be only partially rewritten instead of fully regenerated. Moving the originals out guarantees these files are absent when Phase 4 runs, so the fresh template — with its control semantics intact — is always what gets written. This also subsumes the old legacy-format migration: any legacy or mangled `RALPH.md` is archived and replaced wholesale.
 
 ---
 
