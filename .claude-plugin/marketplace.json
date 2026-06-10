@@ -21,7 +21,7 @@
       "name": "ralph-plan",
       "source": "./",
       "description": "Automate ralph loop setup from branch changes or user-specified scope.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "skills": [
         "./skills/ralph-plan"
       ]
@@ -30,7 +30,7 @@
       "name": "plan-to-ralph",
       "source": "./",
       "description": "Interactive Q&A to generate ralph-o-matic loop files customized for your project.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "skills": [
         "./skills/plan-to-ralph"
       ]
@@ -48,7 +48,7 @@
       "name": "auto-ralph-prep",
       "source": "./",
       "description": "Automatically generate ralph loop files (RALPH.md, focus-areas.md, gaps-identified.md) from spec and design docs without interactive Q&A.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "skills": [
         "./skills/auto-ralph-prep"
       ]
