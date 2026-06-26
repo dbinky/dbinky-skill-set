@@ -7,7 +7,20 @@ Each **paired focus area** requires **1 full review pass** before being consider
 
 A review pass is only checked when the checklist produces a passing result for that area.
 
-**Progression order:** Complete all Pass 1 single area reviews first. Then do paired area reviews (which catch integration issues while the code is fresh). Then do Pass 2 single area reviews.
+**Progression order:** Address newly-introduced test failures first (regressions vs the recorded branch-point baseline), then the whole-pipeline wiring/provenance gaps (Table 0), then gaps vs. the plans/designs. Within the review tables: complete all Pass 1 single area reviews first, then paired area reviews (which catch integration issues while the code is fresh), then Pass 2 single area reviews.
+
+---
+
+## Table 0: Whole-Pipeline Wiring & Provenance (highest priority)
+
+Each item is done only when the symbol/component is **wired-and-fed**: constructed at the real composition root AND fed real data from an existing producer — verified by `grep`, not by a green isolated test.
+
+| # | Symbol / Component | Provenance check | Status |
+|---|---|---|---|
+| W1 | `EmbeddingSet` field on `RankRequest` (`path/to/rank/request.go`) | `grep -rn EmbeddingSet` — only assigned in `rank_test.go`; the real `Handler.Rank` constructs `RankRequest{}` with the field left empty. `[NOT-WIRED]` — wire the live embedder into the handler. | [ ] |
+| W2 | `Scorer` collaborator on `Pipeline` (`path/to/pipeline/pipeline.go`) | `grep -rn NewScorer` — constructed in tests; `cmd/server/main.go` composition root passes `nil` for the scorer arg, so the prod path scores nothing. `[NOT-WIRED]` — construct and inject the real scorer at the composition root. | [ ] |
+| W3 | `cache.Bucket` config (`path/to/config/cache.go`) | `grep -rn Bucket` — value is hardcoded to `"default"` at the call site instead of read from loaded config; the env var loads but is never fed to the client. List as a call-site provenance gap. | [ ] |
+| W4 | `FakeStore` in `pipeline_integration_test.go` | The "integration" test asserts the value handed to `FakeStore.Save` (an intermediate hop) instead of reading it back from the real store sink; also `FakeStore.Save` ignores its `ctx` arg. `[GREEN-THEATER]` — assert the sink and stop ignoring load-bearing args. | [ ] |
 
 ---
 

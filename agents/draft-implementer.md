@@ -60,6 +60,22 @@ to dispatch the work:
 **Important:** Each subagent should use the `superpowers:executing-plans` skill
 with its assigned task file. This ensures the plan is followed precisely.
 
+**Wired-and-fed -- do not ship inert code.** A task is only really done when what
+was built is *wired-and-fed*: constructed at the real composition root (server/DI
+wiring, not just in a test) AND fed real data from a producer that exists -- not
+`nil`, empty, or hardcoded. "Build the component + isolated tests pass" is HALF a
+feature. If a task is a wiring or data-source task, that IS the point -- do it for
+real. If you find a task builds a component but no task wires it in or feeds it
+(the producer doesn't exist), that is a blocker -- record it as `> BLOCKED: <why>`
+(see "Never spin on one task" below), not something to paper over. Never write a
+comment that accepts a missing input as a no-op (no `// NOTE: X not available`).
+
+**Never spin on one task.** If a task was already blocked on a prior pass and still
+cannot complete, do NOT re-fail it. Record the blocker as a `> BLOCKED: <why>` note
+under the failing step in the task file AND in your report, complete any of that
+task's steps that ARE unblocked, and move on to the next unblocked task so the work
+keeps progressing.
+
 ### Step 4: Verify
 
 After all subagents complete:
@@ -74,6 +90,23 @@ After all subagents complete:
 
 If tests still fail after 3 attempts, commit what you have and report the
 failures -- ralph refinement will pick them up.
+
+### Step 4.5: Anti-Green-Theater Self-Review (before committing)
+
+A fully green suite does NOT imply done. Before committing, audit each component's
+tests against this probe: **would this test still pass if the production input were
+`nil`/empty or the wiring absent?** If yes, the test proves nothing -- strengthen it
+to drive the real seam through the composition root and assert the effect at the
+SINK (the real output), not at an intermediate hop. Specifically:
+
+- No fake may ignore a load-bearing argument -- a fake whose method discards the
+  argument that decides behavior makes the test unfailable. Forbidden.
+- An "integration" test must assert the SINK, not an intermediate hop. "The plan
+  reached the proposer" is not integration; "the rendered output changed" is.
+- At least one test per new component should fail if its production input were
+  `nil`/empty -- if none would, the component may be inert in production.
+
+Strengthen any test that fails this probe, then re-run the suite.
 
 ### Step 5: Commit
 
@@ -106,6 +139,19 @@ Known issues for ralph refinement:
   - {description of remaining failure}
 ```
 
+End the report with this STATUS block so the loop can decide whether to continue:
+
+```
+STATUS: <DONE | DONE_WITH_CONCERNS | BLOCKED>
+- task: <which task this pass worked on>
+- tasks with unchecked steps remaining: <integer, or 0>
+- concerns/blockers: <one line, or "none">
+```
+
+`BLOCKED` or `DONE_WITH_CONCERNS` does NOT mean all tasks are complete; only full
+step completion across every task does. Only report `STATUS: DONE` with `0`
+remaining when every plan task has all its steps checked.
+
 ---
 
 ## Engineering Judgment Calls
@@ -113,7 +159,10 @@ Known issues for ralph refinement:
 When plans are ambiguous or incomplete:
 
 - **Missing error handling** -- Add reasonable error handling for the happy path.
-  Don't gold-plate it; ralph will refine.
+  Don't gold-plate it; ralph will refine. But "don't gold-plate" is NOT license to
+  stub out a real input: a component that is only ever constructed or fed in a test,
+  or that papers over a missing producer with a `// NOTE`, is inert in production and
+  counts as a blocker (`> BLOCKED:`), not a refinement detail.
 - **Unclear types** -- Infer from context. Use the spec and design docs for
   domain terminology.
 - **Test strategy not specified** -- Write unit tests for core logic. Integration

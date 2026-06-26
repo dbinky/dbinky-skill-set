@@ -24,17 +24,25 @@ Review the defined scope and refine it, one focus area at a time. Pick ONE focus
 2. **Read the code** — Read every file in the focus area. Understand patterns, contracts, edge cases.
 3. **Cross-reference** — Compare against the relevant design specs (see below). Add issues to `docs/reference/gaps-identified.md`.
 4. **Fix the most important issue, then stop.** Fix it thoroughly across all affected files. Move it to `## Fixed Previously`. **Proceed immediately to step 5. Do not fix another issue.**
-5. **Write/verify tests** — Ensure the focus area has tests for happy path, error, and edge cases. Follow TDD where practical.
-6. **Run tests** — Run `make test-unit` at minimum. Fix failures.
+5. **Write/verify tests** — Ensure the focus area has tests across all five scenario categories (happy / success / failure / error / edge). Follow TDD where practical. Tests must not be green-theater: at least one test per component should fail if its production input were nil/empty.
+6. **Run tests** — Run the test/build command(s) at minimum. Compare the current set of failing tests against the recorded branch-point baseline (see Definition of done) to tell a NEW failure from a pre-existing one. Fix only NEW failures you introduced.
 7. **Assess the checklist** — Evaluate the checklist and then proceed to Wrap Up (regardless of checklist state). Do not go back to step 4.
+
+## Definition of done — baseline-relative, wired-and-fed, conservative
+
+The repo may already be red on arrival. A **branch-point test baseline** records which tests were **already failing BEFORE this work began**. Those pre-existing failures are NOT this work's job and MUST NOT block the loop — log any you touch under `Won't Fix` in `docs/reference/gaps-identified.md`.
+
+"Done" gates on **NO NEW failures vs that baseline** (the current failing set must be a subset of the baseline) and **no new build/compile break** — NOT on a fully green suite. A fully green suite does NOT by itself imply done: green over-mocked tests can coexist with an unwired feature.
+
+**Branch-point test baseline:** _(failures that existed before this work — populated by /ralph-plan; if empty, the suite was green at branch point)_
 
 ## The Checklist
 
-- [ ] All tests pass (`make test-unit`)
-- [ ] Public functions in the focus area have meaningful test coverage
+- [ ] **No NEW test failures vs the recorded baseline** (current failing set ⊆ baseline), and nothing that built at baseline is now broken. (Do NOT require the entire suite to be green.)
+- [ ] **Every plan task is wired-and-fed** — its component is constructed at the REAL composition root (server/DI wiring), not just in a test, AND fed real data from a producer that exists in the code (not nil/empty/hardcoded, not only set in tests). **Provenance grep:** for every new exported field / collaborator / config, `grep -rn <Symbol>` the repo and confirm it is constructed/populated OUTSIDE `*_test.go` and assembled into the real composition root. If a symbol is only ever set in tests → top-priority gap, NOT done.
+- [ ] **Anti-green-theater coverage** — the focus area has tests across all five scenario categories (happy / success / failure / error / edge), and ≥1 test per component would fail if its production input were nil/empty. Fakes do not ignore a load-bearing argument; "integration" tests assert the SINK, not an intermediate hop.
 - [ ] The code aligns with the design spec(s)
-- [ ] Hexagonal boundaries are clean (no adapter types in core, no core logic in adapters)
-- [ ] No open issues in `docs/reference/gaps-identified.md` for this focus area (or any other)
+- [ ] **No open gaps remain** in `docs/reference/gaps-identified.md` for this focus area (or any other). An inert/no-op path logged as "acceptable" is an OPEN gap, not a reason for done — it must be fixed or explicitly escalated, never tolerated as a no-op.
 
 ## Design Specs
 
@@ -50,12 +58,14 @@ Follow these steps in order. **Do not go back to fix more issues.**
 
 **Step C** — If passed: mark the focus area complete in `docs/reference/focus-areas.md`. If not: do NOT update tracking.
 
-**Step D** — Check both files:
-1. Are ALL focus areas in `docs/reference/focus-areas.md` marked complete?
-2. Are there ANY unchecked `[ ]` items in `docs/reference/gaps-identified.md`?
+**Step D** — Be conservative. Check ALL of these:
+1. Are ALL focus areas in `docs/reference/focus-areas.md` marked complete (including the whole-pipeline wiring/provenance focus items)?
+2. Are there ANY unchecked `[ ]` items in `docs/reference/gaps-identified.md`? (An inert/no-op path logged as "acceptable" still counts as an open gap.)
+3. Is every plan task wired-and-fed (verified by provenance grep, not by a green isolated test)?
+4. Are there NO NEW failures vs the recorded baseline, and did nothing that built at baseline break?
 
 Then output exactly one tag:
-- All complete AND no open issues: `<promise>FINIT</promise>`
-- Otherwise: `<promise>CLOSER</promise>`
+- All focus areas complete AND no open gaps AND everything wired-and-fed AND no new failures vs baseline: `<promise>FINIT</promise>`
+- Otherwise (any open gap, any unwired/unfed component, or any new failure): `<promise>CLOSER</promise>`
 
 Stop after the tag.

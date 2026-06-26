@@ -43,6 +43,14 @@ The PR cannot merge without addressing these. Criteria:
 If the item fits any of these criteria, it's Must Fix regardless of which reviewer
 raised it.
 
+**A Must Fix is only "met" when it is wired-and-fed.** An item counts as
+addressed only if the fix is constructed at the real composition root and fed
+real data in production — not left `nil`/unconstructed, and not merely "covered"
+by a test that exercises an isolated type production never reaches. A half-wired
+Must — a validator/resolver/middleware that exists but is never called on the
+live path — is **unmet**, exactly as if it were never fixed. Hold that bar when
+you assess and categorize.
+
 ### Should Fix (Strong Default Yes)
 
 These should be fixed unless there's a compelling deadline argument. Criteria:
@@ -56,7 +64,9 @@ These should be fixed unless there's a compelling deadline argument. Criteria:
 - **Medium security findings** — real risk but limited impact or difficult exploitation
 
 Default: fix these. Override only if the team is in genuine crunch with a hard
-deadline, and the debt is explicitly tracked.
+deadline, and the debt is explicitly tracked. As with Must Fix, treat a
+half-wired (non-wired-and-fed) item as unmet — a fix that isn't reached in
+production hasn't actually been done.
 
 ### Consider (Case-by-Case)
 
@@ -155,7 +165,7 @@ After all individual decisions, post a single summary comment:
 manager: ## Decision Summary
 
 ### Must Fix
-1. <Item description> (from: <architect/10x/security>, thread: <reference>)
+1. <Item description> (from: <architect/10x/security>, thread: <reference>) — wired-and-fed: <yes / not yet>
 2. ...
 
 ### Should Fix
@@ -179,6 +189,11 @@ Post via:
 ```bash
 gh pr comment $PR_NUMBER --body "<decision summary>"
 ```
+
+For each Must Fix item, note whether it is currently genuinely **wired-and-fed**
+(constructed and fed real data on the live production path) or only partially
+addressed. An item that is half-wired or test-only is unmet and must stay in
+Must Fix — do not mark it resolved just because a type or a test exists.
 
 **Verdict logic:**
 - If there are any Must Fix items → `REQUEST CHANGES`

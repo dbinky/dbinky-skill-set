@@ -2,9 +2,13 @@
 
 Issues found during review iterations. Only the user can move items to the Won't Fix sections.
 
+**Inert/no-op paths are OPEN gaps — never silently "acceptable".** A production path that is present but unfed (`nil`/empty/hardcoded, or a degenerate case rationalized away) is logged here as an open `[NOT-WIRED]` issue to fix or escalate — never recorded as tolerated. Tests that pass only because a fake ignores a load-bearing argument, or that assert an intermediate hop instead of the sink, are logged as `[GREEN-THEATER]`.
+
 ## Open Issues
 
-_(none)_
+- [ ] **[NOT-WIRED] EmbeddingSet never fed in production** — `RankRequest.EmbeddingSet` is only ever assigned in `rank_test.go`; the live `Handler.Rank` builds `RankRequest{}` and leaves it empty, so ranking always runs on an empty embedding set. `grep -rn EmbeddingSet` confirms no non-test producer. Wire the real embedder into the handler and feed it.
+- [ ] **[NOT-WIRED] Empty embedding set treated as maximally varied** — when the embedding set is empty the scorer returns a max-diversity score and the path silently no-ops instead of erroring. This is an inert production path, NOT acceptable: either feed a real producer (see above) or escalate. Do not close as "acceptable".
+- [ ] **[GREEN-THEATER] pipeline integration test asserts the wrong sink** — `pipeline_integration_test.go` asserts the value passed to `FakeStore.Save` (an intermediate hop) and `FakeStore.Save` ignores its `ctx` argument, so the test stays green even if the real store never persists. Make the test read back from the real store sink and stop ignoring load-bearing args.
 
 ## Fixed Previously
 

@@ -305,6 +305,39 @@ Dispatch via **Task** tool:
 
 Wait for completion.
 
+### Step 5.5: Persona-Dropout Gate (fail-loud, before the manager)
+
+After all reviewer rounds finish and **before** dispatching the manager,
+deterministically verify that EVERY required reviewer persona actually posted at
+least one comment. A silently dropped reviewer (e.g. a sub-agent that failed,
+timed out, or returned without posting) is the single biggest review miss — if
+the manager synthesizes a verdict on a partial panel, the missing perspective is
+never accounted for and the gap is invisible.
+
+This check keys on the attribution prefixes each persona is required to put at
+the start of every comment: `architect:`, `10x:`, `security:`. Count both inline
+(review) comments and general (issue) comments:
+
+```bash
+# Inline review comments + general issue comments, all bodies:
+gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER/comments?per_page=100" --paginate --jq '.[].body'
+gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments?per_page=100" --paginate --jq '.[].body'
+```
+
+For each required persona in `architect`, `10x`, `security`, count comment bodies
+that begin with `<persona>:`. If ANY required persona has **zero** comments,
+**ABORT the pipeline loudly** — do NOT proceed to the manager:
+
+```
+PERSONA DROPOUT — required reviewer(s) posted nothing: <list>.
+Aborting before the manager renders a verdict on a partial panel.
+Re-run after the dropped persona's tooling/model is fixed.
+```
+
+Only when all three personas have posted at least one comment do you continue to
+Step 6. (This is why every reviewer agent must prefix all of its comments with
+its tag — the gate is deterministic and depends on those prefixes.)
+
 ### Step 6: Engineering Manager
 
 Dispatch via **Task** tool:
@@ -364,9 +397,69 @@ Dispatch via **Task** tool:
   - PR number: `$PR_NUMBER`
   - Selected tier: whichever the user chose
   - Manager's Decision Summary: the full categorized list
-  - Instruction: "You are the senior engineer implementing accepted fixes. Read your agent file and all rule files provided. Read the manager's Decision Summary. Implement all items in the selected tier(s). For each fix: read the relevant code, make the change following language/framework idioms from rule files, verify it works, and resolve the corresponding PR comment thread. Commit all changes with clear messages. If anything is ambiguous, STOP and ask before proceeding."
+  - Instruction: "You are the senior engineer implementing accepted fixes. Read your agent file and all rule files provided. Read the manager's Decision Summary. Implement all items in the selected tier(s). For each fix: read the relevant code, make the change following language/framework idioms from rule files, verify it works, and resolve the corresponding PR comment thread ONLY when the fix is wired-and-fed (constructed at the real composition root and fed real data — grep to confirm it is reached in production, not just defined or unit-tested). Commit all changes with clear messages. If anything is ambiguous, STOP and ask before proceeding."
 
 Wait for completion.
+
+### Step 8: Verify-Fix Gate (independent re-verification)
+
+The senior engineer's known failure mode is **self-certifying a Must as resolved
+while leaving it half-wired, and introducing a fresh regression**. Do NOT trust
+the senior's own Pass/Fail summary as the final word — run an INDEPENDENT verify
+step over its (still-committed-but-treated-as-unverified) work before deciding
+how to label it.
+
+Dispatch a verifier via the **Task** tool with read-and-run-only scope (it may
+build, test, and grep; it must NOT edit, commit, or amend):
+
+- **Rule files**: ALL files in `general_rule_files` (for idiom context only)
+- **Prompt context**:
+  - PR number: `$PR_NUMBER`
+  - Manager's Decision Summary and the senior engineer's Implementation Summary
+  - Instruction: "You are the independent final verifier for the senior engineer's fixes. Re-check the senior's work, do not re-implement it. Verify three things: (1) build/tests have NO NEW failures versus the PR head before the senior's commits (pre-existing failures do not count against the senior); (2) every Must the senior marked resolved is genuinely WIRED-AND-FED — `grep -rn` the changed symbols and confirm each is constructed/fed at the real composition root in production, not just an unconstructed type or a test-only change; (3) no new self-inflicted regression (a swallowed error, a broken existing path, a shared-state bug). Emit a verdict object {push_ok, blockers, notes}: push_ok is true ONLY if build/tests are clean of new failures AND every claimed Must is wired-and-fed AND there is no new regression; blockers is one short string per unresolved/half-wired/regressed item (empty when push_ok is true); notes is a one-sentence summary."
+
+Wait for completion. Parse the verdict into `PUSH_OK` (boolean) and `BLOCKERS`
+(list). If the verdict is missing or unparseable, default `PUSH_OK=false` (treat
+as flagged-with-concerns) — never silently treat an unknown result as clean.
+
+### Step 9: Commit and Push — Both Paths Push
+
+The senior engineer's committed fixes are pushed to the PR branch on **BOTH**
+outcomes. The review workspace may be cleaned up after the run, so NOT pushing =
+the fixes are lost forever (a wasted, expensive senior-engineer pass). The
+verify-fix verdict only changes the COMMENT wording — never whether the work
+ships.
+
+First, commit anything the senior left uncommitted (safety net), then push:
+
+```bash
+git add -A
+git diff --cached --quiet || git commit -m "fix: apply <tier> review fixes for PR #$PR_NUMBER"
+git push origin "HEAD:<PR head branch>"
+```
+
+The push must fail LOUDLY (e.g. a fork PR without push rights) rather than
+swallowing the error.
+
+Then post the comment whose wording depends on the verdict:
+
+- **If `PUSH_OK` is true (verified clean):**
+  ```bash
+  gh pr comment $PR_NUMBER --body "senior: <tier> fixes applied and verified clean (build/tests + wired-and-fed); pushed to \`<PR head branch>\`."
+  ```
+
+- **If `PUSH_OK` is false (pushed but flagged):** list the `BLOCKERS` so a human
+  reviews before merge:
+  ```bash
+  gh pr comment $PR_NUMBER --body "senior: fixes PUSHED, but the verification gate flagged concerns — please review before merge:
+
+  <one bullet per blocker>
+
+  The commits are on the PR branch (\`<PR head branch>\`); CI and a human reviewer should confirm before merge."
+  ```
+
+In both cases the commits are already on the PR branch. The only difference is
+whether the PR comment says "verified clean" or "pushed but flagged."
 
 ---
 
@@ -392,8 +485,11 @@ After all steps finish (or after "None" selection), post a final summary:
 | 3 | Architect Round 2 | Done |
 | 4 | 10x Engineer Round 2 | Done |
 | 5 | Security Expert | Done |
+| 5.5 | Persona-Dropout Gate | Pass / Aborted |
 | 6 | Engineering Manager | Done |
 | 7 | Senior Engineer | <Done/Skipped> |
+| 8 | Verify-Fix Gate | <Verified clean / Flagged concerns / Skipped> |
+| 9 | Commit and Push | <Pushed / Skipped> |
 
 ### Manager's Verdict: <APPROVE/REQUEST CHANGES>
 
@@ -420,6 +516,9 @@ Throughout the pipeline, handle failures gracefully:
 - **Agent dispatch failure**: Report which agent failed, include any error output, and ask the user if they want to retry that step or abort.
 - **Comment posting failure**: May indicate rate limiting or auth issues. Retry once after 5 seconds. If still failing, report and ask user.
 - **Implementation failure**: If the senior engineer encounters a build/test failure, report what broke and ask the user whether to continue with remaining fixes or stop.
+- **Persona dropout**: If the persona-dropout gate (Step 5.5) finds a required reviewer posted nothing, ABORT before the manager step and report which persona dropped out. Do not let the manager render a verdict on a partial panel.
+- **Verify-fix verdict missing/unparseable**: Default to flagged-with-concerns (`PUSH_OK=false`). The fixes are still pushed (both paths push); only the comment wording changes. Never treat an unknown verdict as a clean pass.
+- **Push failure** (e.g. fork PR without push rights): Fail loudly and report it. Do NOT swallow a failed push — the senior's fixes only survive if they reach the remote.
 
 Never silently swallow errors. Every failure should be visible to the user with
 actionable next steps.
@@ -431,5 +530,6 @@ actionable next steps.
 - **Sequential execution**: Each pipeline step MUST complete before the next begins. Later reviewers depend on earlier comments being posted.
 - **No code review by orchestrator**: You coordinate, you do not review. All opinions come from the specialized agents.
 - **Rule files are optional**: The pipeline works without any rule files. Rule files enhance reviews with technology-specific guidance but are not required.
-- **Comment ownership**: Each agent prefixes comments with their identifier (e.g., `architect:`, `10x:`, `security:`, `manager:`). This makes the conversation readable and attributable.
+- **Comment ownership**: Each agent prefixes comments with their identifier (e.g., `architect:`, `10x:`, `security:`, `manager:`). This makes the conversation readable and attributable — and the persona-dropout gate (Step 5.5) depends on these prefixes to deterministically confirm every reviewer actually posted.
+- **Both paths push**: When a fix tier is implemented, the senior engineer's committed work is pushed to the PR branch regardless of the verify-fix verdict. The verdict only changes whether the posted comment says "verified clean" or "pushed but flagged." Not pushing would lose the fixes when the workspace is cleaned up.
 - **Idempotency**: If the pipeline is re-run on the same PR, agents will see their own prior comments. They should NOT duplicate findings — they should reference or update existing ones.

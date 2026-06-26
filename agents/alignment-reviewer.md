@@ -57,6 +57,40 @@ For each pair of related documents, verify:
    the same concept. When found, the document higher in the hierarchy
    (spec > design > plan) is authoritative.
 
+8. **Data Provenance** -- Every leaf input named in a design or plan must trace to
+   an existing `file:symbol` producer OR stay explicitly flagged as `UNRESOLVED
+   DEPENDENCY`. Actively hunt the recurring failure mode: a doc that **asserts a
+   capability that does not exist** as if it were resolved (e.g. "derived from the
+   catalog's distinctive flag" when no such flag exists; an "embedding" with no
+   source; an `and/or` hedge standing in for an unresolved source). For each,
+   either correct it to name the real producer or convert it to a visible
+   `UNRESOLVED DEPENDENCY`. Do NOT silently resolve an `UNRESOLVED DEPENDENCY` by
+   inventing a source -- it must stay flagged so the plan stage turns it into a
+   task or escalation.
+
+9. **Wired-and-Fed** (the highest-value check) -- A component is only really
+   planned when it is *wired-and-fed*: constructed at the real composition root
+   (not just in a test) AND fed real data from a producer that exists. For **every**
+   new component, collaborator, or field, confirm the plans contain:
+   (a) a **composition-root wiring task** -- it is constructed/injected at the real
+   server/DI site, with a test that drives it **through** that site (not by
+   constructing it directly in the test); and
+   (b) a **data-source task** -- naming the producer that populates each input in
+   production.
+   ADD the missing task if either is absent. No `// NOTE` may encode a missing
+   producer/wiring as an accepted no-op (e.g. `// NOTE: X not available, only Y
+   runs`); convert it into the task that resolves it, or surface a top-level
+   `ESCALATION: <what's missing>`. Every design `UNRESOLVED DEPENDENCY` must be
+   either resolved by a task or escalated.
+
+10. **Anti-Green-Theater** -- A fully green suite does not prove a component is
+    live. Confirm each component has at least one test that would FAIL if its
+    production input were `nil`/empty or its wiring absent; that no fake ignores a
+    load-bearing argument (a fake that discards the argument deciding behavior makes
+    the test unfailable -- forbidden); and that no "integration" test asserts an
+    intermediate hop ("the plan reached the proposer") instead of the SINK ("the
+    rendered output changed"). Strengthen any test that fails this probe.
+
 ### Step 3: Fix Issues
 
 For each inconsistency found:
@@ -99,6 +133,9 @@ Changes:
 
 Remaining ambiguities (if any):
   - {description of ambiguity that needs spec clarification}
+
+ESCALATION (if any unresolved dependency or missing producer/wiring remains):
+  - {what's missing -- the input/producer/wiring that no task resolves}
 ```
 
 ---
@@ -112,6 +149,12 @@ A well-aligned document set:
 - Has phase boundaries where outputs and inputs are explicitly compatible
 - Has no orphaned requirements (spec items with no design coverage)
 - Has no phantom features (design items with no spec basis)
+- Has every leaf input traced to a real `file:symbol` producer, or left honestly
+  flagged as `UNRESOLVED DEPENDENCY` -- never assumed into existence
+- Has every new component wired-and-fed: a composition-root wiring task and a
+  data-source task, with no `// NOTE` standing in for a missing producer
+- Has tests that would fail if a production input were nil/empty -- green proves
+  the wiring, not just the isolated unit
 
 ---
 
