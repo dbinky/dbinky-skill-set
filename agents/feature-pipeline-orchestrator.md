@@ -83,6 +83,29 @@ explore requirements, clarify ambiguities, and produce the spec document. Wait
 for the skill to complete -- it will write the spec, get user approval, and
 commit it.
 
+**Harden the brainstorm contract.** Append this guardrail block to the prompt
+above so the brainstorm agent follows it for the whole spec session:
+
+> ABSOLUTE RULES for this brainstorm:
+> - **Turn discipline:** Ask exactly ONE question per turn, then STOP and wait
+>   for the human's reply. Prefer multiple-choice. Never chain steps, pre-answer
+>   your own questions, or race ahead to a conclusion.
+> - **No implementation (this session builds NOTHING):** Do NOT create, edit,
+>   move, or delete any source/test/config/style file, and do NOT run any
+>   build/test/lint/type-check/install/formatter command. The feature is
+>   implemented by a LATER pipeline stage, not here. The ONLY write you may
+>   perform is the spec doc itself, and ONLY after the human explicitly approves
+>   it. (Read-only grounding of the existing codebase is fine.)
+> - **Scope check FIRST:** One spec = one coherent feature. If the request spans
+>   multiple independent capabilities (several unrelated subsystems or outcomes),
+>   say so before drilling in and help the human narrow to one coherent feature
+>   (or split it) rather than refining an oversized spec.
+> - **Self-review before finishing:** Before you write the final doc, scan it for
+>   placeholders/TBDs, internal contradictions, anything readable two ways, and
+>   any implementation detail that leaked in (the spec is features/outcomes/
+>   non-goals only -- no architecture, schemas, APIs, file names, data models, or
+>   tech choices). Fix all of them inline in the file.
+
 ### 2.2 -- Verify
 
 After brainstorming completes, verify the spec file exists:
@@ -113,6 +136,27 @@ Invoke the `superpowers:brainstorming` skill again with this prompt:
 > considering testing (at design presentation time), we need to require strict 
 > TDD with tests for happy path scenarios, success scenarios, failure scenarios, 
 > error scenarios, and edge case scenarios.
+
+**Harden the brainstorm contract.** Append this guardrail block to the prompt
+above so the design brainstorm agent follows it for the whole session:
+
+> ABSOLUTE RULES for this brainstorm:
+> - **Turn discipline:** Ask exactly ONE question per turn, then STOP and wait
+>   for the human's reply. Prefer multiple-choice. Never chain steps, pre-answer
+>   your own questions, or race ahead to a conclusion.
+> - **No implementation (this session builds NOTHING):** Do NOT create, edit,
+>   move, or delete any source/test/config/style file, and do NOT run any
+>   build/test/lint/type-check/install/formatter command. The feature is
+>   implemented by a LATER pipeline stage, not here. The ONLY writes you may
+>   perform are the design phase docs themselves, and ONLY after the human
+>   explicitly approves the design. (Read-only grounding of the spec and existing
+>   codebase is fine.)
+> - **Scope check FIRST:** The design covers ONE coherent feature (the approved
+>   spec). If the spec turns out to span multiple independent capabilities,
+>   surface that and help the human narrow/split before drilling into design.
+> - **Self-review before finishing:** Before you write the final docs, scan each
+>   for placeholders/TBDs, internal contradictions, anything readable two ways,
+>   and any gap vs the spec; fix all of them inline in the files.
 
 Wait for the skill to complete.
 
@@ -162,6 +206,7 @@ Pipeline steps remaining:
   4. Design alignment
   5. Implementation plan production
   6. Plan alignment
+  6.5. Branch-point test baseline capture
   7. Draft implementation
   8. Ralph prep
   9. Ralph submit
@@ -320,6 +365,81 @@ Stop the pipeline.
 
 ---
 
+## Phase 7.5: Capture Branch-Point Test Baseline (SUBAGENT)
+
+Before ANY implementation begins -- while the worktree is still at the feature
+branch's starting point -- record which tests **already fail**. Because no
+feature code has been written yet, whatever fails now is **pre-existing**, not
+caused by this work. Later stages use this baseline to tell a real regression
+from a pre-existing failure, so the loop gates on NEW-vs-baseline rather than on
+a fully green suite.
+
+### 7.5.1 -- Dispatch
+
+Dispatch via **Agent** tool:
+
+- **Model**: Use `opus` for code-quality work
+- **Prompt context**:
+  - Slug: `{SLUG}`
+  - Baseline path: `docs/test-baseline.json`
+  - Instruction: "Capture the branch-point test baseline for '{SLUG}'. This is a
+    MEASUREMENT step, not an implementation step -- do NOT modify, create, or
+    delete any source/test/config file and do NOT fix anything. The code is
+    PRE-implementation, so whatever fails now is pre-existing.
+    1. Detect the project's test suite(s) (the repo may be mixed-language, so
+       there may be more than one). Check CLAUDE.md, README, and the build
+       manifests (Makefile, go.mod, package.json, *.sln/*.csproj, pyproject.toml,
+       Cargo.toml) for the canonical command(s) -- e.g. `make test`,
+       `go test ./...`, `dotnet test`, `npm test`, `pytest`, `cargo test`.
+    2. Build and run each suite. Capture, per suite: whether it built/compiled at
+       all, the passing and failing test counts, and the stable fully-qualified
+       identifier of each failing test.
+    3. Write the baseline to `docs/test-baseline.json` as valid JSON of exactly
+       this shape:
+    ```json
+    {
+      \"suites\": [
+        {
+          \"name\": \"<short suite label>\",
+          \"command\": \"<exact command you ran>\",
+          \"build_ok\": true,
+          \"failed_count\": 0,
+          \"passed_count\": 0,
+          \"failing_tests\": [\"<fully-qualified failing test id>\"]
+        }
+      ]
+    }
+    ```
+    If a suite fails to build, set `build_ok: false`, `failed_count: 0`, and list
+    the build error summary as a single `failing_tests` entry prefixed `BUILD: `.
+    If you genuinely cannot find any test suite, still write the file with an
+    empty `suites` array -- do not invent suites. Keep `failing_tests` to stable
+    identifiers only (no timestamps/durations/run-specific noise).
+    Commit: `git add docs/test-baseline.json && git commit -m 'chore: record {SLUG} branch-point test baseline'`.
+    The user is unavailable."
+
+### 7.5.2 -- Verify
+
+```bash
+test -f docs/test-baseline.json && echo "baseline: OK" || echo "baseline: MISSING"
+```
+
+If the baseline file is missing, this is a failure. Go to 7.5.3.
+
+Record the recorded test command(s) and the pre-existing failing set from
+`docs/test-baseline.json` -- these are passed forward to draft-implementation
+gating (Phase 8) and to ralph prep (Phase 9).
+
+### 7.5.3 -- On Failure
+
+```bash
+ralph-o-matic notify --message "Pipeline failed capturing the test baseline for {SLUG}. Error: {ERROR}. Resume: run the test suite(s) at the branch point and write docs/test-baseline.json, then re-run /spec-to-design --spec {SPEC_PATH}"
+```
+
+Stop the pipeline.
+
+---
+
 ## Phase 8: Draft Implementation (SUBAGENT)
 
 Dispatch an isolated subagent to execute all implementation plans. This subagent
@@ -344,19 +464,48 @@ Dispatch via **Agent** tool:
     The spec at `{SPEC_PATH}` and designs at `{DESIGN_GLOB}` are available
     for reference. Run the project test suite after implementation. Commit
     with message `feat: implement {SLUG} draft via automated pipeline`.
-    The user is unavailable -- do not stop for review or permissions."
+    The user is unavailable -- do not stop for review or permissions.
+    END YOUR REPORT with a STATUS block on its own line:
+    `STATUS: <DONE|DONE_WITH_CONCERNS|BLOCKED>` followed by the count of plan
+    tasks still remaining (unchecked steps) and a short list of any concerns or
+    blockers. Use `DONE` only if every plan task is genuinely complete; use
+    `DONE_WITH_CONCERNS` or `BLOCKED` (with the reason named) otherwise -- do not
+    paper over a blocker as DONE."
 
-### 8.2 -- Verify
+### 8.2 -- Verify (baseline-aware)
 
-After the subagent completes, verify implementation and test status:
+After the subagent completes, verify implementation and read the status:
 
 ```bash
 git log --oneline -5
+```
+
+Re-run the test command(s) recorded in `docs/test-baseline.json` (Phase 7.5) and
+compare the current failing set against the recorded branch-point baseline:
+
+```bash
+# example -- use the actual command(s) from docs/test-baseline.json
 make test 2>&1 | tail -20
 ```
 
-If tests are failing, note this but continue -- ralph refinement
-will address remaining issues.
+Gate on **NEW failures, not a fully green suite**:
+
+- A test that was **already failing in the baseline** is pre-existing and out of
+  scope -- it MUST NOT block. The acceptance condition is that the current
+  failing set is a **subset of** the baseline failing set (no new failures) and
+  **nothing that built at the baseline is now broken** (no new build/compile
+  break).
+- If implementation introduced **NEW** failures or a new build break, note them
+  explicitly -- these are this feature's regressions and are the priority for the
+  ralph loop. Continue (ralph refinement will address NEW-vs-baseline gaps), but
+  carry them forward.
+
+Also read the subagent's trailing **STATUS block**. If it is
+`DONE_WITH_CONCERNS` or `BLOCKED`, capture the status, remaining-task count, and
+named blockers/concerns as `IMPL_STATUS` -- this is surfaced into ralph prep
+(Phase 9) and the final report (Phase 12), NOT swallowed. A pass that built and
+ran but reported a blocker is still a blocker; do not treat implementation as a
+binary pass/continue.
 
 ### 8.3 -- On Failure
 
@@ -384,11 +533,26 @@ Dispatch via **Agent** tool:
   - Spec path: `{SPEC_PATH}`
   - Design glob: `{DESIGN_GLOB}`
   - Plan glob: `{PLAN_GLOB}`
+  - Baseline path: `docs/test-baseline.json`
+  - Impl status: `{IMPL_STATUS}` (from Phase 8 -- the draft-impl STATUS block:
+    DONE / DONE_WITH_CONCERNS / BLOCKED plus remaining-task count and named
+    concerns/blockers)
   - Instruction: "Generate ralph-o-matic review files for the feature '{SLUG}'.
     Invoke the `auto-ralph-prep` skill with SPEC_PATH={SPEC_PATH},
     DESIGN_GLOB={DESIGN_GLOB}, PLAN_GLOB={PLAN_GLOB}, and --slug {SLUG}.
     The user is unavailable for input. Follow the skill's instructions to
-    generate RALPH.md, focus-areas.md, and gaps-identified.md."
+    generate RALPH.md, focus-areas.md, and gaps-identified.md.
+    BASELINE-RELATIVE GATING: a branch-point test baseline was recorded at
+    `docs/test-baseline.json` -- use its exact test command(s) (do NOT invent a
+    command) and its pre-existing failing set. The definition of done is NOT a
+    fully green suite: 'done' means NO NEW test failures beyond that baseline
+    (the current failing set is a subset of the baseline) AND no new build break.
+    Pre-existing baseline failures are out of scope and MUST NOT block the loop.
+    Do NOT write any checklist item that requires the entire suite to be green.
+    Additionally, the draft implementation reported `{IMPL_STATUS}` -- if that is
+    DONE_WITH_CONCERNS or BLOCKED, seed each named blocker/concern as a concrete
+    top-priority focus item in focus-areas.md (and as a gap in gaps-identified.md)
+    so it stays visible to the loop, alongside any NEW-vs-baseline test failures."
 
 ### 9.2 -- Verify
 
@@ -466,8 +630,9 @@ Feature pipeline complete for {SLUG}:
   Spec:           {SPEC_PATH}
   Designs:        {DESIGN_COUNT} phase docs
   Plans:          {PLAN_COUNT} task docs
-  Implementation: committed and tested
-  Ralph:          Job #{JOB_ID} submitted
+  Test baseline:  docs/test-baseline.json (branch-point pre-existing failures)
+  Implementation: committed -- STATUS: {IMPL_STATUS}
+  Ralph:          Job #{JOB_ID} submitted (gates on NEW failures vs baseline)
 
 What happens next (automated):
   1. Ralph runs the refinement review ({MAX_ITERATIONS} max passes)
@@ -477,6 +642,12 @@ What happens next (automated):
 
 Nothing more to do -- go to bed!
 ```
+
+If `{IMPL_STATUS}` was `DONE_WITH_CONCERNS` or `BLOCKED`, append an explicit
+**Open concerns/blockers** section to this summary listing the named items from
+the draft-impl STATUS block (and confirm they were seeded into the ralph focus
+areas in Phase 9). A blocker must stay visible in the final report and the PR --
+do not let a green-looking summary bury it.
 
 The Claude Code session can now end cleanly. The ralph server and
 post-completion hook handle everything from here.
@@ -510,10 +681,15 @@ If `ralph-o-matic notify` fails:
 
 If a verification check fails (file doesn't exist, tests fail, etc.):
 
-- For **missing files** (spec, designs, plans, RALPH.md): this is a hard failure.
-  Notify and stop.
-- For **failing tests** after implementation: this is acceptable. Note the
-  failures and continue -- ralph refinement will fix them.
+- For **missing files** (spec, designs, plans, test-baseline.json, RALPH.md):
+  this is a hard failure. Notify and stop.
+- For **failing tests** after implementation: judge against the branch-point
+  baseline (`docs/test-baseline.json`), not a green suite. Failures already
+  present in the baseline are pre-existing and out of scope -- ignore them.
+  **NEW** failures (or a new build break) introduced by this work are
+  acceptable to continue past -- note them and carry them forward as priorities
+  for ralph refinement, which gates on NEW-vs-baseline. Never require a fully
+  green suite to proceed.
 
 ---
 
