@@ -20,8 +20,8 @@
     {
       "name": "ralph-plan",
       "source": "./",
-      "description": "Automate ralph loop setup from branch changes or user-specified scope.",
-      "version": "1.0.1",
+      "description": "Automate ralph loop setup — behaviour-based focus areas, seam-based paired reviews and a plan critique, from branch changes or user-specified scope.",
+      "version": "1.1.0",
       "skills": [
         "./skills/ralph-plan"
       ]
@@ -30,7 +30,7 @@
       "name": "plan-to-ralph",
       "source": "./",
       "description": "Interactive Q&A to generate ralph-o-matic loop files customized for your project.",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "skills": [
         "./skills/plan-to-ralph"
       ]
@@ -39,7 +39,7 @@
       "name": "feature-pipeline",
       "source": "./",
       "description": "End-to-end feature automation — interactive brainstorm for spec and design, then automated alignment, planning, implementation, ralph refinement loop, and PR review.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "skills": [
         "./skills/feature-pipeline"
       ]
@@ -47,8 +47,8 @@
     {
       "name": "auto-ralph-prep",
       "source": "./",
-      "description": "Automatically generate ralph loop files (RALPH.md, focus-areas.md, gaps-identified.md) from spec and design docs without interactive Q&A.",
-      "version": "1.0.1",
+      "description": "Automatically generate ralph loop files (RALPH.md, focus-areas.md, paired-reviews.md, gaps-identified.md) from spec, design and plan docs, with an independent plan critique.",
+      "version": "1.1.0",
       "skills": [
         "./skills/auto-ralph-prep"
       ]
@@ -57,7 +57,7 @@
       "name": "auto-ralph-submit",
       "source": "./",
       "description": "Non-interactive submission to ralph-o-matic with sensible defaults — pre-flight checks, auto-commit, auto-push, and Teams notification.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "skills": [
         "./skills/auto-ralph-submit"
       ]
@@ -66,7 +66,7 @@
       "name": "spec-to-design",
       "source": "./",
       "description": "Automated pipeline from spec+designs through alignment, planning, plan alignment, and draft implementation — runs steps 3-6 with zero interaction.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "skills": [
         "./skills/spec-to-design"
       ]

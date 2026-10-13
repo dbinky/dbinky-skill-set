@@ -12,7 +12,7 @@ You are submitting work to ralph-o-matic for iterative refinement with zero user
 Parse the following from the user's command or calling skill:
 
 - `--priority LEVEL`: Job priority — high, normal, low (default: high)
-- `--max-iterations N`: Max ralph passes (default: 1000)
+- `--max-iterations N`: Max ralph passes (default: the `Iteration cap:` line in `RALPH.md`'s `## Review plan and budget` — the cap the review plan was sized for — or 1000 if that line is absent)
 - `--local`: Use local repo directory (default: true)
 - `--slug SLUG`: Feature slug for notification messages (optional)
 
@@ -20,13 +20,24 @@ Parse the following from the user's command or calling skill:
 
 Execute these steps in order. Do not ask for user input at any point.
 
-### Step 1: Validate RALPH.md Exists
+### Step 1: Validate RALPH.md and Resolve the Iteration Cap
 
 Check for `RALPH.md` in the repository root. If missing, send a Teams notification and stop:
 
 ```bash
 ralph-o-matic notify --message "Pipeline failed: RALPH.md not found in $(git remote get-url origin) on branch $(git branch --show-current). Run /auto-ralph-prep first."
 ```
+
+If `--max-iterations` was not passed, read the cap the plan was sized for:
+
+```bash
+grep -m1 -oE 'Iteration cap: *[0-9]+' RALPH.md | grep -oE '[0-9]+'
+```
+
+Use it as `MAX_ITERATIONS`; if there is no such line, use 1000. A cap below the plan's
+`Implied minimum passes` cannot finish the plan — if an explicit `--max-iterations` is
+lower than that number, say so in the report and the Teams message (the run will stop at
+the cap with reviews unfinished).
 
 ### Step 2: Pre-flight Checks
 
@@ -37,6 +48,10 @@ Run these checks before submission:
    git add -A
    git commit -m "chore: pre-ralph cleanup"
    ```
+
+   Include the ralph tracking files: `RALPH.md` and `docs/reference/` (`focus-areas.md`,
+   `paired-reviews.md`, `gaps-identified.md`, `historical/`) must be committed before
+   submission, since the loop reads them from the branch.
 
 2. **Branch pushed to origin** — push if the branch isn't tracked remotely or has unpushed commits:
    ```bash
