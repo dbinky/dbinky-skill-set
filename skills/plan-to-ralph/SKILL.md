@@ -1,15 +1,21 @@
 ---
 name: plan-to-ralph
-description: Generate ralph-o-matic review files via interactive Q&A or automatic derivation (--auto) from spec and design docs
+description: Generate ralph-o-matic review files via interactive Q&A or automatic derivation (--auto) from spec and design docs — behaviour-based focus areas, seam-based paired reviews, and a role protocol that separates fixing from approving
 ---
 
 # Plan to Ralph
 
-You are generating ralph-o-matic review files through interactive Q&A. This skill produces three files that configure a ralph refinement run:
+You are generating ralph-o-matic review files through interactive Q&A. This skill produces four files that configure a ralph refinement run:
 
-- `RALPH.md` — Review instructions (persona, mission, steps, checklist, promise tags)
-- `docs/reference/focus-areas.md` — Review tracking table (single areas with 2 passes, paired areas with 1 pass)
-- `docs/reference/gaps-identified.md` — Issue tracker (open, fixed, won't-fix sections)
+- `RALPH.md` — the charter: persona, mission, test commands, baseline, and the loop protocol (role selection, fix/verify separation, wrap-up, promise tags)
+- `docs/reference/focus-areas.md` — single-system reviews: one row per **behaviour**, two approvals each (wiring lens, failure lens), one detail block per area
+- `docs/reference/paired-reviews.md` — paired reviews: one row per **seam**, one approval covering both directions, plus `## No seam`
+- `docs/reference/gaps-identified.md` — open gaps, escalations, closed, won't fix
+
+The structure comes from the `ralph-plan` skill's templates and reference docs, which this skill shares:
+- Templates: `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/templates/`
+- Seeding rules: `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/seeding-rules.md`
+- Plan critique: `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/plan-critique.md`
 
 After generating these files, the user runs `/direct-to-ralph` or `ralph-o-matic submit` to start the review.
 
@@ -19,6 +25,7 @@ Parse the following from the user's command:
 
 - `CONTEXT` (optional): Free-text description of what the review should focus on (e.g., "on the work on the new identity system"). When provided, narrows codebase scan and pre-seeds Q&A answers.
 - `--reset`: Skip backup. Overwrite existing files without creating historical copies.
+- `--max-iterations N` (optional): the iteration cap the run will use; skips Question 6.
 - `--auto`: Skip all Q&A and derive answers automatically from spec and design docs. Requires `SPEC_PATH` argument (path to the feature spec). When `--auto` is passed, this skill delegates entirely to the `auto-ralph-prep` skill. Equivalent to invoking `/auto-ralph-prep` directly.
 - `SPEC_PATH` (required when `--auto`): Path to the feature spec (e.g., `docs/specs/user-auth-spec.md`)
 
@@ -41,6 +48,7 @@ If this fails, stop and tell the user: "This skill requires a git repository. In
 Invoke the `auto-ralph-prep` skill with the same arguments:
 - Pass `SPEC_PATH` as the spec path
 - Pass `CONTEXT` (if provided) as the design glob context
+- Pass `--max-iterations` if provided
 - Pass `--slug` derived from the spec filename
 
 Do NOT continue with the phases below — `auto-ralph-prep` handles everything.
@@ -56,22 +64,21 @@ Do NOT continue with the phases below — `auto-ralph-prep` handles everything.
 Check if any of these files exist:
 - `RALPH.md`
 - `docs/reference/focus-areas.md`
+- `docs/reference/paired-reviews.md`
 - `docs/reference/gaps-identified.md`
 
 **If none exist:** Skip silently to Phase 2.
 
-**If any exist:** Archive them before regenerating.
+**If any exist:** Archive them exactly as `ralph-plan` Phase 2 does — **move (not copy)**
+each into `docs/reference/historical/` as `YYYY-MM-DD-historical-{name}-{plan#}.md`,
+where the plan number is the **highest existing suffix for today plus 1** (not a file
+count — a partial earlier backup makes count-based numbering collide). Tell the user:
+"Archived existing files to `docs/reference/historical/` as plan #{plan#}."
 
-1. Create `docs/reference/historical/` if it doesn't exist.
-2. Get today's date as `YYYY-MM-DD`.
-3. For each existing file, **move (rename) it** into `docs/reference/historical/` with the naming pattern — do NOT copy it. The original must no longer exist at its working-tree location afterward:
-   - `RALPH.md` → `YYYY-MM-DD-historical-RALPH.md`
-   - `focus-areas.md` → `YYYY-MM-DD-historical-focus-areas.md`
-   - `gaps-identified.md` → `YYYY-MM-DD-historical-gaps-identified.md`
-4. If a same-day backup already exists, append a counter: `-2`, `-3`, etc. For example, if `2026-03-12-historical-RALPH.md` already exists, use `2026-03-12-historical-RALPH-2.md`.
-5. Tell the user what was archived: "Archived existing files to `docs/reference/historical/`."
-
-**Why move instead of copy:** Phase 4 regenerates each file fresh from the template in this skill, which carries the required control semantics — notably the `<promise>` tag logic that lets the ralph server stop after repeated "no progress" iterations. If the old files stayed in place, a previously mangled `RALPH.md` (one whose `<promise>` logic was stripped by an earlier run) could survive or be only partially rewritten instead of fully regenerated. Moving the originals out guarantees these files are absent when Phase 4 runs, so the fresh template — with its control semantics intact — is always what gets written. This also subsumes the old legacy-format migration: any legacy or mangled `RALPH.md` is archived and replaced wholesale.
+**Why move instead of copy:** Phase 4 lays down fresh templates carrying the loop's
+control semantics — role selection, the fix/verify separation and the `<promise>` tag
+logic that lets the ralph server stop. Moving the originals out guarantees a previously
+mangled `RALPH.md` can never survive into the new run.
 
 ---
 
@@ -136,7 +143,7 @@ Present the detected command: "I detected `{COMMAND}` as your test command. Use 
 
 If nothing is detected, ask: "What command runs your tests? (e.g., `make test`, `npm test`, `pytest`)"
 
-The test command is required. Store it as `TEST_COMMAND`.
+The test command is required. If the repo is mixed-language, collect every suite's command. Store it as `TEST_COMMAND`.
 
 ### Question 3: Persona
 
@@ -158,132 +165,91 @@ If they choose "See alternatives," generate 3 additional personas with different
 
 Store the final persona as `PERSONA`.
 
-### Question 4: Single Focus Areas
+### Question 4: Behaviours (single-system areas)
 
-**If the scan found components:**
+Read `seeding-rules.md` first; it is the authority for this question and the next.
 
-Generate focus areas across three categories. Think beyond directory structure — identify the domain concepts, their neighborhoods, and the vertical slices that cut through the codebase from top to bottom. Aim for a thorough list; more areas means more coverage.
+**If the scan found components:** derive candidate **behaviours**, not components. For
+each thing the work promises (from CONTEXT, the MISSION, the spec/designs, the commit
+log), find its entry point and sink and read the path between them. Apply the merge
+test to every pair and the split test (by sub-path, never by layer) to any candidate
+too large for one pass. Fold small changes into the behaviour they serve. Expect 6–15;
+above 20 means you are slicing by layer — merge.
 
-1. **Components** — Individual modules, packages, or directories that own a distinct responsibility (these come directly from the scan results).
-2. **Domain Concepts** — Logical concepts that may span multiple files or directories: a business entity and everything that touches it (models, validation, persistence, API surface, tests), a workflow or process (e.g., "order fulfillment" across handlers, services, and repositories), or a cross-cutting concern (error handling strategy, logging conventions, auth/authz boundaries). Include neighboring concepts — if "payments" is a domain, "refunds" and "invoicing" are its neighbors and deserve their own areas.
-3. **Vertical Slices** — End-to-end paths through the system: a user action from API endpoint (or UI event) through business logic, data access, and back. Each slice should trace a complete request/response or workflow from the outermost boundary to the innermost layer and back.
-
-Present all discovered areas as a numbered list grouped by these categories:
-
-```
-Based on the codebase scan, here are the candidate focus areas:
-
-**Components:**
-  [1] Auth Module (src/auth/) — authentication and session management
-  [2] Payment Service (src/payments/) — payment processing logic
-  [3] Database Layer (src/db/) — schema, migrations, queries
-  [4] Configuration (config/) — env loading, defaults
-  [5] CI/CD (.github/workflows/) — build, test, deploy pipelines
-
-**Domain Concepts:**
-  [6] User Identity (src/auth/, src/users/, src/db/users.sql) — user model, registration, profile, permissions as a cohesive domain
-  [7] Payment Lifecycle (src/payments/, src/refunds/, src/invoicing/) — charge, capture, refund, and invoice as a connected domain neighborhood
-  [8] Error Handling Strategy (across all modules) — error types, propagation patterns, user-facing error responses, logging consistency
-  [9] Test Quality & Isolation (tests/) — test patterns, mocking strategy, fixture management, coverage gaps
-
-**Vertical Slices:**
-  [10] User Registration Flow — POST /register → validation → user creation → welcome email → response
-  [11] Payment Checkout Flow — POST /checkout → auth check → inventory hold → charge → confirmation → response
-  [12] Admin Dashboard Load — GET /admin → auth middleware → aggregate queries → template rendering → response
-
-Which areas should be included in the review? You can:
-- List numbers to include (e.g., "1, 2, 3, 5")
-- Say "all" to include everything
-- Add areas not in the list (e.g., "also add: Notification System (src/notifications/)")
-- Remove areas (e.g., "drop 5")
-```
-
-**If the scan found zero components:**
-
-Ask: "I couldn't detect clear components in this codebase. Please describe the focus areas for review — include code modules, domain concepts (business entities and their neighbors), and vertical slices (end-to-end flows). List them one per line, with a brief description of what each covers."
-
-For each selected/added focus area, ensure it has:
-- A name
-- A category (Component, Domain Concept, or Vertical Slice)
-- Key files (from scan or user input)
-- A one-line review scope description
-
-Store the final list as `SINGLE_AREAS`.
-
-### Question 5: Paired Focus Areas
-
-Generate suggested pairings from the selected single areas. Pairings should go beyond adjacent modules — think about every meaningful boundary where two areas interact, hand off data, or share assumptions. Generate pairings across all three categories:
-
-1. **Component Integration** — Two components that communicate, share data structures, or depend on each other's contracts. Focus on the seam: data format, error propagation, sequencing, and shared state.
-2. **Domain Boundary** — Two domain concepts that neighbor each other or overlap. Focus on whether business rules are consistent across the boundary: does the payment domain's definition of "completed" match what the notification domain expects? Do neighboring concepts handle the same edge cases the same way?
-3. **Vertical Slice Handoffs** — A vertical slice paired with a component or domain concept it passes through. Focus on whether the slice's assumptions hold at each layer: does the API contract match the service interface? Does the service call the repository correctly? Does the response shape match what the caller expects?
-4. **Cross-Cutting Consistency** — A cross-cutting concern (error handling, logging, config, auth) paired with a specific component or domain to verify the concern is applied consistently and correctly in that area.
-
-When CONTEXT was provided: the context system paired with every component, domain concept, and vertical slice it touches (direct and indirect).
-
-Present as a numbered list grouped by pairing type:
+Present them highest risk first:
 
 ```
-Suggested paired reviews (verifying integration and consistency):
+Candidate behaviours (each gets two reviews: wiring lens, failure lens):
 
-**Component Integration:**
-  [1] Auth Module + Database Layer — session storage, credential queries, transaction safety
-  [2] Payment Service + Auth Module — authorization checks before charges, token propagation
+  [1] [high] a saved search is stored for its owner and refused for anyone else
+        entry api/handlers/saved_search.go:Create → sink store/saved_search_repo.go:Insert
+        folded in: route registration, migration 0042 constraints
+  [2] [high] the nightly job emails each owner the new listings matching their saved searches
+        entry jobs/alerts.go:RunNightly → sink mail/sender.go:Send
+  [3] [med]  the unsubscribe link turns alerts off for exactly one saved search
+        entry api/handlers/unsubscribe.go:Handle → sink store/saved_search_repo.go:SetEnabled
 
-**Domain Boundary:**
-  [3] Payment Lifecycle + User Identity — does "active user" mean the same thing in both domains? Refund eligibility vs. account status
-  [4] Payment Lifecycle + Error Handling Strategy — are payment failures surfaced consistently? Retry semantics, idempotency
+Merged while deriving: "saved-search handler", "saved-search repository" and
+"filters value object" → [1] (one path; none judgeable without the others).
 
-**Vertical Slice Handoffs:**
-  [5] User Registration Flow + Database Layer — user creation query correctness, constraint handling, rollback on email failure
-  [6] Payment Checkout Flow + Payment Lifecycle — does the flow exercise the full lifecycle? Edge cases at each layer boundary
-
-**Cross-Cutting Consistency:**
-  [7] Error Handling Strategy + Payment Service — are payment errors typed, logged, and surfaced correctly?
-  [8] Configuration + Auth Module — do auth config values (token TTL, allowed origins) match runtime behavior?
-
-Which pairs to include? Same controls as above: list numbers, "all", add new pairs, or drop.
+Keep, drop, merge, split (by sub-path), re-rank, or add?
 ```
 
-Store the final list as `PAIRED_AREAS`.
+**If the scan found zero components:** ask: "I couldn't detect clear components. Describe
+what this work promises — one behaviour per line, ideally with where it starts and where
+its effect lands."
 
-### Question 6: Checklist
+For each confirmed behaviour, build its `### Area N` block (Promise, Entry, Sink, Files,
+Folded in, 3–7 wiring-lens checks, 3–7 failure-lens checks, Seed evidence) from real
+greps. Store as `SINGLE_AREAS`.
 
-Present the proposed checklist:
+### Question 5: Seams (paired reviews)
+
+Apply the seam test to every pair of confirmed behaviours: shared state, contract,
+queue, flag or ordering **and** different authoring tasks/commits **and** a silent
+failure. One `A ↔ B` row per seam — never a reverse row.
 
 ```
-Proposed review checklist (assessed each pass):
+Seams (one review each, both directions):
 
-Universal (always included):
-  [1] All tests pass (`{TEST_COMMAND}`)
-  [2] No open issues in `docs/reference/gaps-identified.md` for this focus area
-  [3] The focus area is complete and polished — you'd be proud to ship it
+  [1] [high] saved search is stored ↔ nightly job emails matches
+        SHARED: saved_searches.filters JSON shape · BREAK: matcher ignores a key the handler writes
+  [2] [med]  unsubscribe ↔ nightly job
+        SHARED: the enabled flag, disable-before-run ordering · BREAK: cached list emails an unsubscribed owner
 
-Proposed (based on your project):
-  [4] {proposed item based on context, e.g., "The code aligns with the design doc"}
-  [5] {proposed item, e.g., "Module boundaries are clean — no adapter types in core"}
+Not paired (recorded under ## No seam):
+  stored / unsubscribe — share the table, no shared field or ordering
 
-Add, remove, or edit items? Or accept as-is?
+Keep, drop, add, or re-rank?
 ```
 
-Generate 1-3 proposed items based on what you've learned:
-- If a design doc exists → add spec alignment item
-- If hexagonal/layered architecture detected → add boundary cleanliness item
-- If security-related MISSION → add security-specific item
-- If test framework detected with coverage tools → add test scenario categories item
+Store the rows as `PAIRED_AREAS` and the rejections as `NO_SEAM`.
 
-Store the final checklist as `CHECKLIST`.
+### Question 6: Iteration cap
+
+**Skip if `--max-iterations` was passed.**
+
+Compute the implied minimum `4 × singles + 2 × paired` (every box costs a refine pass and
+a separate verify pass) and the recommended cap `ceil(implied / 0.35)`:
+
+"This plan needs at least {implied} passes; with headroom for gaps and regressions I
+recommend `--max-iterations {recommended}`. Use that, or tell me the cap you'll run with?"
+
+If the user's cap is below the recommendation, defer the lowest-risk seams to
+`Deferred (budget)` (then merge more) until `implied ≤ cap × 0.35`, and show what moved.
+Store as `MAX_ITERATIONS`.
 
 ### Question 7: Additional Constraints
 
-Present the standard constraints that are always included:
+Present the standard constraints that are always included (they are part of `RALPH.md`):
 
 ```
 These constraints are always included:
-- No sub-agents for bulk generation
-- Read before you write
-- One focus area, one fix, one commit
+- No sub-agents; read before you write
+- One item per pass; fix the most important issue, then stop
+- The pass that fixes never approves — a later verify pass ticks the box
 - Don't invent new functionality (log gaps instead)
+- Tests run in the foreground; done is baseline-relative, never "whole suite green"
 
 Any project-specific constraints to add? (e.g., "Do NOT write Python scripts for analysis", "Run linting after every change"). Enter to skip.
 ```
@@ -294,168 +260,68 @@ Store any additions as `EXTRA_CONSTRAINTS`.
 
 ## Phase 4: Generate
 
-Write all 3 files. Create `docs/reference/` directory if it doesn't exist.
+### 4.1 — Copy the templates (byte-exact)
 
-**Before generating, read the example files for exact formatting reference:**
-- `${CLAUDE_PLUGIN_ROOT}/skills/plan-to-ralph/docs/reference/example-focus-areas.md` — canonical format for focus-areas.md (table layout, review guidance sections, HTML structure)
-- `${CLAUDE_PLUGIN_ROOT}/skills/plan-to-ralph/docs/reference/example-gaps-identified.md` — canonical format for gaps-identified.md (section structure, HTML comment examples showing how entries should be formatted)
-
-Match the formatting, section structure, and HTML comment patterns from these examples exactly. The inline templates below define the content structure; the example files define the precise formatting.
-
-### Generate RALPH.md
-
-Write `RALPH.md` in the repository root with this structure (substitute all `{VARIABLES}` with values from Q&A):
-
-```markdown
-# Review Instructions
-
-You are an automated code reviewer. The user is unavailable — do the work without asking for input.
-
-## Persona
-
-{PERSONA}
-
-## Your Mission
-
-{MISSION_DESCRIPTION — expand the MISSION into 1-3 paragraphs describing what was built, what the review covers, and what "done" looks like}
-
-## Tracking System
-
-- Read `docs/reference/focus-areas.md` before starting. Each single area (from table 1) needs **2 review passes** before being considered __done__. Each paired area (from table 2) needs **1 review pass** before being considered __done__. Use this document to track which reviews have been advanced and completed.
-- DO NOT update this document until the "Wrap Up" phase. Updating is conditional on your checklist assessment.
-
-## Constraints
-
-- **Do NOT use sub-agents for bulk generation.** When you modify or create code, do it by hand, one component at a time, with thought behind each decision.
-- **Read before you write.** Before modifying any file, read the relevant sections. Before claiming something is fine, read it and reason about quality.
-- **One focus area, one fix, one commit.** Pick a focus area. Find issues. Fix the ONE most important issue. Commit, push, and stop. Do not fix a second issue. Small, focused passes are more reliable than ambitious ones.
-- **Do NOT invent new functionality to fill perceived gaps.** Maintain a list of things you find that should be fixed at `docs/reference/gaps-identified.md` in the `## Open Issues` section. If you perceive there is new, missing functionality beyond the current scope, log it in the `## Won't Fix (Beyond Current Scope)` section. If something on the list has been fixed previously, move it to `## Fixed Previously`.
-{EXTRA_CONSTRAINTS — each as a new bullet point with bold lead, same format as above}
-
-## Steps
-
-Review one area, fix ONE issue, test, commit, stop. Resist the urge to keep fixing.
-
-1. **Read the Tracking File** — Read `docs/reference/focus-areas.md` and pick a review focus area that hasn't been completed yet. Progression order: complete all **Pass 1** single area reviews, then **paired area** reviews, then **Pass 2** single area reviews.
-2. **Read the Area's Code** — Deeply examine the code for the chosen focus area. Read every file. Understand the patterns.
-3. **Analyze findings and update the gaps list** — Cross-reference what you just read with the design doc and codebase conventions. Add any issues found to `docs/reference/gaps-identified.md` in the `## Open Issues` section.
-4. **Fix the single most important issue, then stop.** Fix it thoroughly — if it spans multiple files, fix all of them consistently. Once fixed, move the issue to `## Fixed Previously` in `docs/reference/gaps-identified.md`. **Proceed immediately to step 5. Do not fix another issue.**
-5. **Run the tests** — Run `{TEST_COMMAND}`. Investigate and fix each failure.
-6. **Assess the checklist** — Evaluate honestly, then proceed immediately to the Wrap Up phase. Do not go back to step 4.
-
-## The Checklist (be brutally honest)
-
-Do NOT check a box unless you could defend it in a code review:
-
-{CHECKLIST — each item as `- [ ] {item text}`}
-
-## Wrap Up
-
-Follow these steps in order. **Do not go back to fix more issues.**
-
-**Step A — Commit and push your branch to remote.**
-
-Always commit and push first. Your work is valuable regardless of checklist status.
-
-**Step B — Determine if this focus area passed review.**
-
-All checklist boxes must be honestly checked for the focus area to pass. **Most focus areas need 2-5 passes — this is normal and expected.** A failing checklist simply means this area needs another pass. Every commit that fixes something is a successful outcome.
-
-**Step C — Update tracking (only if the focus area passed).**
-
-- If the focus area **passed**: Mark that focus area's review as complete in `docs/reference/focus-areas.md`.
-- If the focus area **did not pass**: Do NOT update `docs/reference/focus-areas.md`.
-
-**Step D — Output your promise tag and stop.**
-
-Check `docs/reference/focus-areas.md`. Are ALL reviews (single areas and paired areas) now marked complete?
-
-- If **all reviews are complete**: output `<promise>FINIT</promise>`
-- If **any reviews remain incomplete**: output `<promise>CLOSER</promise>`
-
-Output exactly one `<promise>` tag, then stop. Do not output anything after the tag.
+```bash
+T="${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/templates"
+mkdir -p docs/reference
+cp "$T/RALPH.md"            RALPH.md
+cp "$T/focus-areas.md"      docs/reference/focus-areas.md
+cp "$T/paired-reviews.md"   docs/reference/paired-reviews.md
+cp "$T/gaps-identified.md"  docs/reference/gaps-identified.md
 ```
 
-### Generate docs/reference/focus-areas.md
+Never retype `RALPH.md` — a shell copy is how its loop semantics survive intact.
 
-Write `docs/reference/focus-areas.md` with this structure:
+### 4.2 — Fill the plan files
 
-```markdown
-# Focus Areas Review Tracking
+Match the worked examples exactly:
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-to-ralph/docs/reference/example-focus-areas.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-to-ralph/docs/reference/example-paired-reviews.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-to-ralph/docs/reference/example-gaps-identified.md`
 
-This document tracks the systematic review of {MISSION_SHORT — one-line summary}.
+Write `SINGLE_AREAS` (table + blocks) into `focus-areas.md`, `PAIRED_AREAS` and `NO_SEAM`
+into `paired-reviews.md`, and any gaps found while seeding into the `## Open` section of
+`gaps-identified.md` (each gap line carries an id: `- [ ] G<n> **Title** — …`). Delete the
+templates' `<!-- … -->` example comments.
 
-Each **single focus area** requires **2 full review passes** before being considered done.
-Each **paired focus area** requires **1 full review pass** before being considered done.
+### 4.3 — Fill RALPH.md placeholders
 
-A review pass is only checked when the checklist produces a passing result for that area.
+With Edit (not a rewrite), replace:
+- `{PERSONA}` — the PERSONA from Question 3
+- `{MISSION}` — the MISSION expanded into 1–3 paragraphs: what was built, what the review covers, what done looks like
+- `{TEST_COMMANDS}` — TEST_COMMAND (and any other suites), one per line in a code block
+- `{BASELINE}` — the pre-existing failing tests if `docs/test-baseline.json` exists or the user supplied them; otherwise `_(no baseline recorded — treat every failure as needing investigation)_`
+- `{DESIGN_SPECS}` — links to the spec/design/plan docs found in the scan
+- `{PLAN_ARITHMETIC}` — the exact five-line shape from `seeding-rules.md`, with `Iteration cap: {MAX_ITERATIONS}`
+- `{EXTRA_CONSTRAINTS}` — bold-lead bullets, or `_(none)_`
 
-**Progression order:** Complete all Pass 1 single area reviews first. Then do paired area reviews (which catch integration issues while the code is fresh). Then do Pass 2 single area reviews.
+### 4.4 — Critique the plan
 
----
+Dispatch **one fresh subagent** (Agent tool, `subagent_type: general-purpose`) that did not
+write the plan, exactly as `ralph-plan` Phase 7 does: it applies
+`${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/plan-critique.md` (merge, block,
+seam, budget and risk-order tests, from outside, reading the code), edits only the four
+tracking files, rewrites the budget arithmetic if counts change, appends the
+`## Plan critique` section to `RALPH.md`, and does not commit. Pass it the scope, the
+iteration cap and your account of which candidates you merged and why.
 
-## Table 1: Single Area Reviews (2 passes each)
+### 4.5 — Verify
 
-| # | Focus Area | Pass 1 | Pass 2 | Status |
-|---|---|---|---|---|
-{For each SINGLE_AREA, numbered starting at 1:}
-| {N} | {Name} (`{key files}` — {review scope description}) | [ ] | [ ] | |
-
----
-
-## Table 2: Paired Area Reviews (1 pass each)
-
-| # | Pair | Pass | Status |
-|---|---|---|---|
-{For each PAIRED_AREA, numbered continuing from single areas:}
-| {N} | {Area 1} + {Area 2} ({seam description}) | [ ] | |
-
----
-
-## Review Guidance
-
-### Single Area Reviews — What To Check
-
-**Pass 1 (Correctness & Coverage):**
-- All public functions have test coverage (happy path, failure, error, edge cases)
-- The code does what the design doc says it should
-- Error handling is thorough — no silent failures
-- Module boundaries are clean (no leaking types across boundaries)
-
-**Pass 2 (Robustness & Extensibility):**
-- Code aligns to the spirit of the design, not just surface conformance
-- The component is ready to be extended by future work
-- Test assertions test real risks, not just happy-path ceremony
-- Edge cases are handled (empty inputs, concurrent access, boundary values)
-
-### Paired Area Reviews — What To Check
-
-Paired reviews verify that two components integrate correctly:
-- Data flows cleanly across the boundary
-- Error propagation works end-to-end
-- No assumptions in one component that the other doesn't satisfy
-- The integration tests cover the seams between the pair
+```bash
+for m in '## Role: wiring-review' '## Role: failure-review' '## Role: paired-review' \
+         '## Role: verify' '## Wrap Up' '<promise>FINIT</promise>' \
+         '<promise>CLOSER</promise>' 'Stop after the tag' '## Plan critique' \
+         'Iteration cap:'; do
+  grep -qF "$m" RALPH.md || echo "MISSING: $m"
+done
+grep -c '{[A-Z_]*}' RALPH.md            # must print 0
+grep -c '<!--' docs/reference/focus-areas.md docs/reference/paired-reviews.md docs/reference/gaps-identified.md   # 0 each
 ```
 
-### Generate docs/reference/gaps-identified.md
-
-Write `docs/reference/gaps-identified.md`:
-
-```markdown
-# Gaps Identified
-
-Issues found during review. Only the user can move items to the Won't Fix sections.
-
-## Open Issues
-
-_(none)_
-
-## Fixed Previously
-
-_(none yet)_
-
-## Won't Fix (Beyond Current Scope)
-```
+A RALPH.md marker missing → save the `## Plan critique` section and the filled values,
+re-copy the template, redo 4.3, and re-append the saved critique. Fix any other failure in
+place.
 
 ---
 
@@ -467,17 +333,15 @@ Show the user a summary:
 Ralph review files generated:
 
   RALPH.md
-    Persona:      {first sentence of PERSONA}
-    Test command:  {TEST_COMMAND}
-    Checklist:     {N} items
+    Persona:       {first sentence of PERSONA}
+    Test commands: {TEST_COMMANDS}
+    Plan critique: {before → after line}
 
-  docs/reference/focus-areas.md
-    Single areas:  {N} (2 passes each)
-    Paired areas:  {N} (1 pass each)
-    Total reviews: {TOTAL} passes
+  docs/reference/focus-areas.md     — {S} behaviours (wiring + failure review each)
+  docs/reference/paired-reviews.md  — {P} seams, {N} combinations recorded as no seam
+  docs/reference/gaps-identified.md — {G} seeded gaps
 
-  docs/reference/gaps-identified.md
-    Empty template ready
+  Minimum passes: {4S + 2P}   Cap: {MAX_ITERATIONS}
 
 Want to review or edit any of the generated files before I commit?
 ```
@@ -491,8 +355,7 @@ If they want to review a file, show its content using the Read tool. If they mak
 Stage and commit all generated files plus any historical backups:
 
 ```bash
-git add RALPH.md docs/reference/focus-areas.md docs/reference/gaps-identified.md
-# Also stage historical backups if they were created
+git add RALPH.md docs/reference/focus-areas.md docs/reference/paired-reviews.md docs/reference/gaps-identified.md
 git add docs/reference/historical/ 2>/dev/null || true
 git commit -m "chore: generate ralph review files via plan-to-ralph"
 ```
@@ -502,9 +365,9 @@ Tell the user:
 ```
 Review files committed. To start the ralph review:
 
-  /direct-to-ralph "{MISSION_SHORT}"
+  /direct-to-ralph "{MISSION_SHORT}" --max-iterations {MAX_ITERATIONS}
 
 Or submit manually:
 
-  ralph-o-matic submit
+  ralph-o-matic submit --max-iterations {MAX_ITERATIONS}
 ```

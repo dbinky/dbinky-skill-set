@@ -60,6 +60,11 @@ to dispatch the work:
 **Important:** Each subagent should use the `superpowers:executing-plans` skill
 with its assigned task file. This ensures the plan is followed precisely.
 
+**Tick the plan as you go.** Each subagent changes a step's `- [ ]` to `- [x]` in its task
+file as soon as that step is genuinely done (test written and seen failing, code written,
+test passing, committed). The pipeline counts unchecked steps to decide whether to
+re-dispatch you; an unticked plan reads as no progress and stops implementation early.
+
 **Wired-and-fed -- do not ship inert code.** A task is only really done when what
 was built is *wired-and-fed*: constructed at the real composition root (server/DI
 wiring, not just in a test) AND fed real data from a producer that exists -- not
@@ -76,20 +81,30 @@ under the failing step in the task file AND in your report, complete any of that
 task's steps that ARE unblocked, and move on to the next unblocked task so the work
 keeps progressing.
 
-### Step 4: Verify
+### Step 4: Verify (baseline-relative)
 
 After all subagents complete:
 
-1. Run the project's test suite (detected from Makefile, package.json, etc.)
-2. If tests fail:
-   a. Read the failure output
-   b. Diagnose the root cause
-   c. Fix the issue
-   d. Re-run tests
-3. Repeat until tests pass or you've made 3 fix attempts
+1. Run the test command(s) recorded in `docs/test-baseline.json`. If that file is absent
+   or its `suites` array is empty (a fallback baseline), detect the project's suites
+   yourself (Makefile, go.mod, package.json, *.sln/*.csproj, pyproject.toml, Cargo.toml). Run them in the foreground and
+   wait for each to finish.
+2. Compare the failing set against the baseline's `failing_tests`. A test that already
+   failed at the branch point is **pre-existing — not yours, do not touch it**. Only a
+   NEW failure, or a suite that built at baseline and now does not compile, is this
+   work's regression.
+3. For each NEW failure: read the output, diagnose the root cause, fix it, re-run.
+   Repeat until no NEW failures remain or you've made 3 fix attempts.
 
-If tests still fail after 3 attempts, commit what you have and report the
-failures -- ralph refinement will pick them up.
+Red tests that were already red at baseline are tolerated; never chase a fully green
+suite. If NEW failures remain after 3 attempts, commit what you have and report them --
+ralph refinement will pick them up.
+
+### Step 4.4: Spec-Compliance Self-Review
+
+For each task: does what was built implement **exactly** that task's slice of the plan
+and design — **nothing missing and nothing extra**? Remove any unrequested feature,
+flag or option (no gold-plating); add anything the task requires that was skipped.
 
 ### Step 4.5: Anti-Green-Theater Self-Review (before committing)
 
@@ -115,7 +130,11 @@ Stage and commit all implementation changes:
 ```bash
 git add -A
 git commit -m "feat: implement {SLUG} draft via automated pipeline"
+git push --quiet -u origin HEAD 2>/dev/null || true
 ```
+
+You may be re-dispatched if tasks remain. On a re-dispatch, implement only the tasks
+that still have unchecked `- [ ]` steps and no `> BLOCKED:` note you cannot now resolve.
 
 ### Step 6: Report
 

@@ -1,74 +1,79 @@
-# Focus Areas Review Tracking
+# Focus Areas — Single-System Reviews
 
-This document tracks the systematic review of [YOUR FEATURE/SYSTEM] for correctness, security, and robustness.
+Each area is a **behaviour**: one thing this work promises, traced from where it
+starts (Entry) to where its effect lands (Sink), across every layer in between —
+not a file, a class, a layer or a package.
 
-Each **single focus area** requires **2 full review passes** before being considered done.
-Each **paired focus area** requires **1 full review pass** before being considered done.
+Each area needs **two approvals**: Review 1 (the **wiring** lens — does the path
+exist and is it fed?) and Review 2 (the **failure** lens — how does it fail?). Only
+a fresh verifier subagent ticks a box; see `RALPH.md`. Rows and blocks are the approval
+criteria — refiners never edit them; they add lines under `## Pending approvals`.
 
-A review pass is only checked when the checklist produces a passing result for that area.
+Rows are ordered **highest risk first**. Keep the table's five columns exactly. The
+detail blocks use numbered lists, never checkbox syntax — `[ ]`/`[x]` outside the
+table corrupts the approval count.
 
-**Progression order:** Address newly-introduced test failures first (regressions vs the recorded branch-point baseline), then the whole-pipeline wiring/provenance gaps (Table 0), then gaps vs. the plans/designs. Within the review tables: complete all Pass 1 single area reviews first, then paired area reviews (which catch integration issues while the code is fresh), then Pass 2 single area reviews.
+## Single-System Reviews
 
----
-
-## Table 0: Whole-Pipeline Wiring & Provenance (highest priority)
-
-Each item is done only when the symbol/component is **wired-and-fed**: constructed at the real composition root AND fed real data from an existing producer — verified by `grep`, not by a green isolated test.
-
-| # | Symbol / Component | Provenance check | Status |
-|---|---|---|---|
-| W1 | `EmbeddingSet` field on `RankRequest` (`path/to/rank/request.go`) | `grep -rn EmbeddingSet` — only assigned in `rank_test.go`; the real `Handler.Rank` constructs `RankRequest{}` with the field left empty. `[NOT-WIRED]` — wire the live embedder into the handler. | [ ] |
-| W2 | `Scorer` collaborator on `Pipeline` (`path/to/pipeline/pipeline.go`) | `grep -rn NewScorer` — constructed in tests; `cmd/server/main.go` composition root passes `nil` for the scorer arg, so the prod path scores nothing. `[NOT-WIRED]` — construct and inject the real scorer at the composition root. | [ ] |
-| W3 | `cache.Bucket` config (`path/to/config/cache.go`) | `grep -rn Bucket` — value is hardcoded to `"default"` at the call site instead of read from loaded config; the env var loads but is never fed to the client. List as a call-site provenance gap. | [ ] |
-| W4 | `FakeStore` in `pipeline_integration_test.go` | The "integration" test asserts the value handed to `FakeStore.Save` (an intermediate hop) instead of reading it back from the real store sink; also `FakeStore.Save` ignores its `ctx` arg. `[GREEN-THEATER]` — assert the sink and stop ignoring load-bearing args. | [ ] |
-
----
-
-## Table 1: Single Area Reviews (2 passes each)
-
-| # | Focus Area | Pass 1 | Pass 2 | Status |
+| # | Focus Area | Risk | Review 1 Status | Review 2 Status |
 |---|---|---|---|---|
-| 1 | Component A (`path/to/component_a.py` — initialization, validation, core logic) | [ ] | [ ] | |
-| 2 | Component B (`path/to/component_b.go` — request handling, error paths, response formatting) | [ ] | [ ] | |
-| 3 | Component C (`path/to/component_c.ts` — external API client, retry logic, response parsing) | [ ] | [ ] | |
-| 4 | Data Layer (`path/to/db/` — schema, queries, migrations, connection handling) | [ ] | [ ] | |
-| 5 | Configuration (`path/to/config/` — env var loading, defaults, validation) | [ ] | [ ] | |
-| 6 | Test Coverage (`path/to/tests/` — test isolation, mocking strategy, missing edge cases) | [ ] | [ ] | |
+| 1 | a saved search is stored for its owner and refused for anyone else | high | [ ] | [ ] |
+| 2 | the nightly job emails each owner the new listings matching their saved searches | high | [ ] | [ ] |
+| 3 | the unsubscribe link turns alerts off for exactly one saved search | med | [ ] | [ ] |
 
----
+## Area details
 
-## Table 2: Paired Area Reviews (1 pass each)
+### Area 1 — a saved search is stored for its owner and refused for anyone else
 
-| # | Pair | Pass | Status |
-|---|---|---|---|
-| 7 | Component A + Component B (data flow across boundary, error propagation, contract alignment) | [ ] | |
-| 8 | Component B + Component C (request/response contract match, header naming, error mapping) | [ ] | |
-| 9 | Component A + Data Layer (query correctness, transaction boundaries, null handling) | [ ] | |
-| 10 | Configuration + All Components (env vars actually used, defaults match behavior, missing config) | [ ] | |
-| 11 | Test Coverage + Components (tests cover seams between pairs, not just unit-level happy paths) | [ ] | |
+- **Promise:** `POST /saved-searches` stores the caller's filters under the caller's account; a request naming another account is refused.
+- **Entry:** `api/handlers/saved_search.go:Create`
+- **Sink:** `store/saved_search_repo.go:Insert` (row in `saved_searches`)
+- **Files:** `api/handlers/saved_search.go`, `domain/search/filters.go`, `store/saved_search_repo.go`, `migrations/0042_saved_searches.sql`, `cmd/server/main.go` (wiring), `api/routes.go`
+- **Folded in:** `api/routes.go` — the new route is registered behind the auth middleware; `migrations/0042` — `owner_id` is `NOT NULL` with a foreign key.
+- **Review 1 — wiring lens:**
+  1. `NewSavedSearchRepo` is constructed in `cmd/server/main.go:buildServer` and injected into the handler — not only in tests.
+  2. `Create` reads the owner from `auth.FromContext`, not from the request body.
+  3. The route reaches `Insert` on the live router (`api/routes.go`), and `TestCreateSavedSearch_PersistsForOwner` reads the row back from the store.
+- **Review 2 — failure lens:**
+  1. Body naming a different `owner_id` → 403 and no row; `TestCreateSavedSearch_RejectsForeignOwner`.
+  2. Empty filter set → 400, not an always-matching search; the test goes red if the validation is removed.
+  3. Duplicate submit → one row (unique index on owner + filter hash); concurrent test.
+- **Seed evidence:** `grep -rn NewSavedSearchRepo` → `cmd/server/main.go:88`, `store/saved_search_repo_test.go:14`; `grep -rn owner_id api/` → read from body at `saved_search.go:41` — logged as a gap.
 
----
+### Area 2 — the nightly job emails each owner the new listings matching their saved searches
 
-## Review Guidance
+- **Promise:** once a night, every enabled saved search with new matching listings produces one email to its owner.
+- **Entry:** `jobs/alerts.go:RunNightly` (scheduled in `cmd/worker/main.go`)
+- **Sink:** `mail/sender.go:Send`
+- **Files:** `jobs/alerts.go`, `domain/search/match.go`, `store/saved_search_repo.go:ListEnabled`, `store/listing_repo.go:SinceCursor`, `mail/sender.go`, `cmd/worker/main.go`
+- **Folded in:** `config/defaults.yaml` — `alerts.cron` default; check it is read, not hardcoded.
+- **Review 1 — wiring lens:**
+  1. `RunNightly` is registered with the scheduler in `cmd/worker/main.go:registerJobs`.
+  2. The real `mail.Sender` (not the no-op) is injected in production config.
+  3. `TestRunNightly_EmailsOwner` asserts on the sender's recorded message, the sink.
+- **Review 2 — failure lens:**
+  1. The mail provider errors for one owner → the others still get their email and the cursor does not advance past the failed one.
+  2. A crash mid-run → re-running does not double-send (cursor committed per owner).
+  3. A saved search with zero matches sends nothing.
+- **Seed evidence:** `grep -rn RunNightly` → `cmd/worker/main.go:52`; `mail.NewNoopSender` is the default in `config/defaults.yaml` — gap.
 
-### Single Area Reviews — What To Check
+### Area 3 — the unsubscribe link turns alerts off for exactly one saved search
 
-**Pass 1 (Correctness & Coverage):**
-- All public functions have test coverage (happy path, failure, error, edge cases)
-- The code does what the design doc says it should
-- Error handling is thorough — no silent failures
-- Module boundaries are clean (no leaking types across boundaries)
+- **Promise:** the link in an alert email disables alerts for that saved search only.
+- **Entry:** `api/handlers/unsubscribe.go:Handle`
+- **Sink:** `store/saved_search_repo.go:SetEnabled`
+- **Files:** `api/handlers/unsubscribe.go`, `domain/search/token.go`, `store/saved_search_repo.go`, `mail/templates/alert.html`
+- **Folded in:** `mail/templates/alert.html` — the link carries the signed token, not the raw id.
+- **Review 1 — wiring lens:**
+  1. The handler is routed without auth (the link is opened from email) but verifies the signed token.
+  2. `SetEnabled` is called with the id decoded from the token.
+  3. `TestUnsubscribe_DisablesOneSearch` reads the flag back from the store.
+- **Review 2 — failure lens:**
+  1. A tampered or expired token → 400 and no change.
+  2. Unsubscribing twice is idempotent.
+  3. An owner's other saved searches stay enabled.
+- **Seed evidence:** `grep -rn SetEnabled` → `unsubscribe.go:30`, repo tests only.
 
-**Pass 2 (Robustness & Extensibility):**
-- Code aligns to the spirit of the design, not just surface conformance
-- The component is ready to be extended by future work
-- Test assertions test real risks, not just happy-path ceremony
-- Edge cases are handled (empty inputs, concurrent access, boundary values)
+## Pending approvals
 
-### Paired Area Reviews — What To Check
-
-Paired reviews verify that two components integrate correctly:
-- Data flows cleanly across the boundary
-- Error propagation works end-to-end
-- No assumptions in one component that the other doesn't satisfy
-- The integration tests cover the seams between the pair
+_(none)_

@@ -13,8 +13,11 @@ Orchestrate the complete feature development pipeline from brainstorming through
 /feature-pipeline {description of the product feature}
 /feature-pipeline {description} --slug user-auth
 /feature-pipeline {description} --spec-only
-/feature-pipeline {description} --max-iterations 300 --priority normal
+/feature-pipeline {description} --max-iterations 400 --priority normal
+/feature-pipeline --resume --slug user-auth     # pick up an interrupted feature from its existing docs
 ```
+
+`--max-iterations` defaults to 300; the ralph review plan is sized to fit it.
 
 ## Process
 
@@ -26,8 +29,8 @@ The orchestrator will:
 1. Parse arguments and initialize paths
 2. Guide interactive spec brainstorming (user present)
 3. Guide interactive design brainstorming (user present)
-4. Dispatch automated steps as isolated subagents — alignment, planning, second alignment, implementation, ralph planning, ralph submission
-5. Notify Teams at key milestones
+4. Dispatch automated steps as isolated subagents — alignment, planning, second alignment, a dependency gate (asks you for any decision only a human can make), test baseline, implementation, ralph planning (behaviour areas, seams, independent critique), ralph submission
+5. Push at every checkpoint and notify Teams at key milestones
 6. Report final status
 
 **IMPORTANT:** Read the orchestrator file using the path `${CLAUDE_PLUGIN_ROOT}/agents/feature-pipeline-orchestrator.md` and follow it exactly.

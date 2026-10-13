@@ -1,25 +1,45 @@
 # Gaps Identified
 
-Issues found during review.
+**Keep this file readable — every pass reads its open list.** Records are at most
+ten lines with `file:symbol`. A closed item moves under `## Closed` with a one-line
+note; its history does not stay in the open list. (One ledger grew to 1.4 MB and
+18,000 lines because every pass appended a multi-page record, and no reviewer could
+fit it in context.)
 
-## Issue Pattern
+Format for an open item:
 
-When you add issues to this list, use the format:
+- [ ] G<n> **ISSUE TITLE** — what is wrong, where (`file:symbol`), and enough context for the next pass to act without rediscovering it.
 
-- [ ] **ISSUE TITLE** - Issue Description that contains enough context for the reviewer to pick it up, get oriented in the code and then address the issue.
+Ids (`G1`, `G2`, …) are never reused. Only a verify pass closes a gap; a refiner that fixed
+one adds `- G<n> · Recommend: close · <sha> · <what fixed it>` under `## Pending approvals`.
 
-New issues are added to the `Open Issues` section. Resolved issues (where the [x] box is checked) are moved to the `Resolved Issues` section.
+Tags:
+- `[NOT-WIRED]` — a production path that is present but unfed: constructed only in tests, or fed `nil`/empty/hardcoded. An inert path is an open gap, never "acceptable".
+- `[GREEN-THEATER]` — a test that passes only because a fake ignores a load-bearing argument, or an "integration" test that asserts an intermediate hop instead of the sink.
+- `[REGRESSION]` — a test that was not failing at the branch-point baseline and now fails, or something that compiled at baseline and no longer does. Fixed before anything else.
 
-**Inert/no-op paths are OPEN gaps — never silently "acceptable".** Any production path that is present but unfed — fed `nil`/empty/hardcoded, or a degenerate case rationalized away (e.g. "empty set treated as maximally varied — acceptable") — MUST be logged here as an open `[NOT-WIRED]` issue. An unfed production path is a gap to fix or an explicit escalation; it is never a tolerated no-op and never a reason to call the work done. Likewise tag any test that only passes because a fake ignores a load-bearing argument or asserts an intermediate hop instead of the sink as `[GREEN-THEATER]`.
-
-## Open Issues
+## Open
 
 _(none)_
 
-## Resolved Issues
+## Pending approvals
+
+_(none)_
+
+## Escalations
+
+Questions only a human can answer, set aside so they stop blocking passes. Plain
+lines, no checkboxes — these do not block `<promise>FINIT</promise>`, but every
+pass that ends the loop lists them.
+
+_(none)_
+
+## Closed
 
 _(none yet)_
 
-## Won't Fix (Beyond Current Scope)
+## Won't Fix
+
+Out of scope for this work, or pre-existing baseline failures this work touched.
 
 _(none)_

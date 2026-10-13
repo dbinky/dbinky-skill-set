@@ -113,6 +113,7 @@ Stage and commit all changes:
 ```bash
 git add docs/
 git commit -m "docs: align {SLUG} {SCOPE} documents"
+git push --quiet -u origin HEAD 2>/dev/null || true
 ```
 
 Where `{SCOPE}` is "design" or "design and plan" depending on what was reviewed.
@@ -137,6 +138,23 @@ Remaining ambiguities (if any):
 ESCALATION (if any unresolved dependency or missing producer/wiring remains):
   - {what's missing -- the input/producer/wiring that no task resolves}
 ```
+
+**When Scope is "design and plan", end your output with this machine-readable block
+— ALWAYS, even when clean.** The pipeline's dependency gate parses it, so it must be the
+last thing you print:
+
+```
+UNRESOLVED-DEPENDENCIES: <count>
+- <doc path> — <consumer task/component> needs <missing producer file:symbol or field>: <the design decision a human must make>
+```
+
+A dependency is **UNRESOLVED** if a plan task consumes a type / field / collaborator /
+data source that no task produces and no existing `file:symbol` provides — including any
+design `UNRESOLVED DEPENDENCY` you could not resolve into a task, any `ESCALATION:` line,
+any `// NOTE` that papers over a missing producer, and any choice the plans say a human
+must still make. Emit `UNRESOLVED-DEPENDENCIES: 0` ONLY when the graph is fully closed.
+**Do not hide a hole to make the count zero** — an unresolved dependency caught here costs
+one question; one that reaches implementation stalls the whole run.
 
 ---
 
