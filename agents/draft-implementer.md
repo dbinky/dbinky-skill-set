@@ -60,6 +60,11 @@ to dispatch the work:
 **Important:** Each subagent should use the `superpowers:executing-plans` skill
 with its assigned task file. This ensures the plan is followed precisely.
 
+**Tick the plan as you go.** Each subagent changes a step's `- [ ]` to `- [x]` in its task
+file as soon as that step is genuinely done (test written and seen failing, code written,
+test passing, committed). The pipeline counts unchecked steps to decide whether to
+re-dispatch you; an unticked plan reads as no progress and stops implementation early.
+
 **Wired-and-fed -- do not ship inert code.** A task is only really done when what
 was built is *wired-and-fed*: constructed at the real composition root (server/DI
 wiring, not just in a test) AND fed real data from a producer that exists -- not
@@ -80,8 +85,9 @@ keeps progressing.
 
 After all subagents complete:
 
-1. Run the test command(s) recorded in `docs/test-baseline.json` (fall back to the
-   project's detected suite only if that file is absent). Run them in the foreground and
+1. Run the test command(s) recorded in `docs/test-baseline.json`. If that file is absent
+   or its `suites` array is empty (a fallback baseline), detect the project's suites
+   yourself (Makefile, go.mod, package.json, *.sln/*.csproj, pyproject.toml, Cargo.toml). Run them in the foreground and
    wait for each to finish.
 2. Compare the failing set against the baseline's `failing_tests`. A test that already
    failed at the branch point is **pre-existing — not yours, do not touch it**. Only a

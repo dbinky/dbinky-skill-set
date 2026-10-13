@@ -166,7 +166,8 @@ Do the greps while seeding and put real findings — `file:symbol` — into each
 
 ## Seeding `gaps-identified.md`
 
-Seed the `## Open` section with the real gaps you found while seeding — one `- [ ]` item
-each, a few lines, `file:symbol` — including any NEW-vs-baseline test failures and any
-blockers the implementation reported. Leave the readability rule at the top of the file
+Seed the `## Open` section with the real gaps you found while seeding — one
+`- [ ] G<n> **Title** — …` item each (ids from `G1`), a few lines, `file:symbol` —
+including any NEW-vs-baseline test failures (tagged `[REGRESSION]`) and any blockers the
+implementation reported. Leave the readability rule at the top of the file
 intact.

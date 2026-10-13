@@ -3,12 +3,13 @@
 A row exists only for a real **seam**: the two behaviours share persisted state, a
 wire contract, a queue, a flag or an ordering constraint; they were built by
 different tasks, phases or commits; and a break would be silent (each side green in
-isolation). How seams are chosen:
-`${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/seeding-rules.md`.
+isolation).
 
 Each seam is **one row**, named `A ↔ B`, and its single approval covers **both
 directions**. There are no reverse rows. Paired reviews start only once every
-single-system box in `focus-areas.md` is ticked.
+single-system box in `focus-areas.md` is ticked (or its area escalated). Refiners never
+edit the table or `## No seam`; demotions and promotions are proposed under
+`## Pending approvals` and applied by the verifier.
 
 Rows are ordered **highest risk first**. Keep the five columns exactly; no `|`
 inside a cell.

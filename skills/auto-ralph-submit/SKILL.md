@@ -31,8 +31,10 @@ ralph-o-matic notify --message "Pipeline failed: RALPH.md not found in $(git rem
 If `--max-iterations` was not passed, read the cap the plan was sized for:
 
 ```bash
-grep -m1 -oE 'Iteration cap: *[0-9]+' RALPH.md | grep -oE '[0-9]+'
+grep -oE 'Iteration cap: *[0-9]+' RALPH.md | tail -1 | grep -oE '[0-9]+'
 ```
+
+(The last such line wins — a plan critique may have rewritten the arithmetic.)
 
 Use it as `MAX_ITERATIONS`; if there is no such line, use 1000. A cap below the plan's
 `Implied minimum passes` cannot finish the plan — if an explicit `--max-iterations` is

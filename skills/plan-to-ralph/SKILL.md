@@ -282,15 +282,10 @@ Match the worked examples exactly:
 
 Write `SINGLE_AREAS` (table + blocks) into `focus-areas.md`, `PAIRED_AREAS` and `NO_SEAM`
 into `paired-reviews.md`, and any gaps found while seeding into the `## Open` section of
-`gaps-identified.md`. Delete the templates' `<!-- … -->` example comments.
+`gaps-identified.md` (each gap line carries an id: `- [ ] G<n> **Title** — …`). Delete the
+templates' `<!-- … -->` example comments.
 
-### 4.3 — Critique the plan
-
-Apply `plan-critique.md` to what you just wrote (merge, block, seam, budget and risk-order
-tests, from outside). Fix what fails, renumber, and append the `## Plan critique` section
-to `RALPH.md`.
-
-### 4.4 — Fill RALPH.md placeholders
+### 4.3 — Fill RALPH.md placeholders
 
 With Edit (not a rewrite), replace:
 - `{PERSONA}` — the PERSONA from Question 3
@@ -298,8 +293,18 @@ With Edit (not a rewrite), replace:
 - `{TEST_COMMANDS}` — TEST_COMMAND (and any other suites), one per line in a code block
 - `{BASELINE}` — the pre-existing failing tests if `docs/test-baseline.json` exists or the user supplied them; otherwise `_(no baseline recorded — treat every failure as needing investigation)_`
 - `{DESIGN_SPECS}` — links to the spec/design/plan docs found in the scan
-- `{PLAN_ARITHMETIC}` — singles, paired, implied minimum, MAX_ITERATIONS, budget (`MAX_ITERATIONS × 0.35`)
+- `{PLAN_ARITHMETIC}` — the exact five-line shape from `seeding-rules.md`, with `Iteration cap: {MAX_ITERATIONS}`
 - `{EXTRA_CONSTRAINTS}` — bold-lead bullets, or `_(none)_`
+
+### 4.4 — Critique the plan
+
+Dispatch **one fresh subagent** (Agent tool, `subagent_type: general-purpose`) that did not
+write the plan, exactly as `ralph-plan` Phase 7 does: it applies
+`${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/plan-critique.md` (merge, block,
+seam, budget and risk-order tests, from outside, reading the code), edits only the four
+tracking files, rewrites the budget arithmetic if counts change, appends the
+`## Plan critique` section to `RALPH.md`, and does not commit. Pass it the scope, the
+iteration cap and your account of which candidates you merged and why.
 
 ### 4.5 — Verify
 
@@ -314,7 +319,9 @@ grep -c '{[A-Z_]*}' RALPH.md            # must print 0
 grep -c '<!--' docs/reference/focus-areas.md docs/reference/paired-reviews.md docs/reference/gaps-identified.md   # 0 each
 ```
 
-Anything missing → re-copy the template and redo 4.4.
+A RALPH.md marker missing → save the `## Plan critique` section and the filled values,
+re-copy the template, redo 4.3, and re-append the saved critique. Fix any other failure in
+place.
 
 ---
 

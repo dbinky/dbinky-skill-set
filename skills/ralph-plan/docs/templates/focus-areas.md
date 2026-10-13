@@ -2,12 +2,12 @@
 
 Each area is a **behaviour**: one thing this work promises, traced from where it
 starts (Entry) to where its effect lands (Sink), across every layer in between —
-not a file, a class, a layer or a package. How areas are chosen:
-`${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/seeding-rules.md`.
+not a file, a class, a layer or a package.
 
 Each area needs **two approvals**: Review 1 (the **wiring** lens — does the path
 exist and is it fed?) and Review 2 (the **failure** lens — how does it fail?). Only
-a verify pass ticks a box; see `RALPH.md`.
+a fresh verifier subagent ticks a box; see `RALPH.md`. Rows and blocks are the approval
+criteria — refiners never edit them; they add lines under `## Pending approvals`.
 
 Rows are ordered **highest risk first**. Keep the table's five columns exactly. The
 detail blocks use numbered lists, never checkbox syntax — `[ ]`/`[x]` outside the

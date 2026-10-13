@@ -72,11 +72,12 @@ Read `seeding-rules.md` in full. It is the authority for this phase.
 
 ### Test commands and baseline
 
-- `TEST_COMMANDS`: the exact commands from `docs/test-baseline.json`. Without a baseline
-  file, auto-detect (`Makefile` test target → `make test`, `package.json` → `npm test`,
+- `TEST_COMMANDS`: the exact commands from `docs/test-baseline.json`. If the file is
+  absent or its `suites` array is empty (a fallback baseline), auto-detect (`Makefile` test target → `make test`, `package.json` → `npm test`,
   `go.mod` → `go test ./...`, `*.sln`/`*.csproj` → `dotnet test`, `pyproject.toml` →
   `pytest`, `Cargo.toml` → `cargo test`) — every suite in a mixed-language repo.
-- `BASELINE`: the pre-existing failing set from the baseline file, summarised; otherwise
+- `BASELINE`: the pre-existing failing set from the baseline file, as test identifiers per
+  suite (verifiers compare per test); if the file is absent or empty,
   `_(no baseline recorded — treat every failure as needing investigation)_`.
 
 ### Behaviours (single-system areas)
@@ -131,7 +132,7 @@ cp "$T/paired-reviews.md"   docs/reference/paired-reviews.md
 cp "$T/gaps-identified.md"  docs/reference/gaps-identified.md
 ```
 
-Then, matching the worked examples:
+Then, matching the worked examples (gap lines carry ids: `- [ ] G<n> **Title** — …`):
 - write the behaviours (table + `### Area N` blocks) into `focus-areas.md`;
 - write the seams and `## No seam` into `paired-reviews.md`;
 - write the seeded gaps into `## Open` of `gaps-identified.md`;

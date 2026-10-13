@@ -110,7 +110,8 @@ project-specific sections.
 ## Phase 4: Detect Test Commands and Baseline
 
 1. Detect the project's test command(s) — the repo may be mixed-language, so there may
-   be more than one. If `docs/test-baseline.json` exists, use its exact commands.
+   be more than one. If `docs/test-baseline.json` exists with a non-empty `suites` array,
+   use its exact commands.
    Otherwise check `CLAUDE.md`, `README`, `Makefile`, and the build manifests
    (`go.mod` → `go test ./...`, `package.json` → `npm test`, `*.sln`/`*.csproj` →
    `dotnet test`, `pyproject.toml` → `pytest`, `Cargo.toml` → `cargo test`).
@@ -162,16 +163,7 @@ final files.
 
 ---
 
-## Phase 6: Critique the Plan
-
-Read `plan-critique.md` and apply it to the plan you just wrote: the merge, block, seam,
-budget and risk-order tests, applied from outside. Fix what fails, renumber, and append
-the `## Plan critique` section to `RALPH.md`. Tell the user what changed (or that the
-plan was already tight).
-
----
-
-## Phase 7: Fill RALPH.md
+## Phase 6: Fill RALPH.md
 
 Replace each `{PLACEHOLDER}` in `RALPH.md` with an Edit — do not retype the file:
 
@@ -187,11 +179,33 @@ Replace each `{PLACEHOLDER}` in `RALPH.md` with an Edit — do not retype the fi
   - `docs/superpowers/specs/some-design.md` — brief description
   ```
   If none: `_(no design docs found — consider creating a spec before running the review)_`
-- `{PLAN_ARITHMETIC}` — singles, paired, implied minimum, cap (or recommended cap), budget.
+- `{PLAN_ARITHMETIC}` — the exact five-line shape from `seeding-rules.md`, including the
+  `Iteration cap:` line (the recommended cap when none was given).
 - `{EXTRA_CONSTRAINTS}` — project constraints from `CLAUDE.md` that apply to automated
   code work, as bold-lead bullets; `_(none)_` if there are none.
 
-Then verify the loop machinery survived:
+## Phase 7: Critique the Plan
+
+A plan reviewed only by its author keeps its author's slicing. Dispatch **one fresh
+subagent** (Agent tool, `subagent_type: general-purpose`) that did not write the plan:
+
+> You are the plan critic for a ralph review plan you did not write. Read
+> `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/plan-critique.md` and
+> `${CLAUDE_PLUGIN_ROOT}/skills/ralph-plan/docs/reference/seeding-rules.md`, then apply the
+> critique to `RALPH.md`, `docs/reference/focus-areas.md`,
+> `docs/reference/paired-reviews.md` and `docs/reference/gaps-identified.md`. Scope:
+> {SCOPE}. Iteration cap: {MAX_ITERATIONS or the recommended cap}. The seeder reported:
+> {areas, seams, and which candidates were merged and why}. Read the code, not just the
+> plan. Edit only those four files; never tick a box; never touch production code. Rewrite
+> the `## Review plan and budget` arithmetic if the counts change, and append the
+> `## Plan critique` section to RALPH.md. Do not commit. Report areas and seams
+> before/after and each merge or strike with its reason.
+
+Tell the user what the critic changed (or that the plan was already tight).
+
+## Phase 7a: Verify
+
+Verify the loop machinery survived both edits:
 
 ```bash
 for m in '## Role: wiring-review' '## Role: failure-review' '## Role: paired-review' \
@@ -204,7 +218,9 @@ grep -c '{[A-Z_]*}' RALPH.md   # must print 0 — every placeholder filled
 grep -c '<!--' docs/reference/focus-areas.md docs/reference/paired-reviews.md docs/reference/gaps-identified.md   # 0 each
 ```
 
-If anything is missing, re-copy the template (Phase 3) and redo Phase 7.
+If a RALPH.md marker is missing, the loop machinery was damaged. Save the current
+`## Plan critique` section and the filled values, re-copy the template (Phase 3), redo
+Phase 6, and re-append the saved critique section. Fix any other failure in place.
 
 ---
 

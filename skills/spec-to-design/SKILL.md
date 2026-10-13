@@ -54,6 +54,10 @@ Report the BLOCKING and DECISION lines and stop. Do not implement against plans 
 wait on a decision — `/feature-pipeline --resume` re-enters at plan alignment and runs the
 gate interactively.
 
+Phase 8.2's blocked-implementation message says "Continuing to ralph refinement" — here,
+say instead that implementation stopped blocked and that `/auto-ralph-prep` (with the
+STATUS block as `IMPL_STATUS`) is the next step.
+
 ## Completion
 
 ```

@@ -58,7 +58,45 @@ mkdir -p docs/specs docs/superpowers/specs docs/superpowers/plans
 ### 1.5 -- Branch
 Check if git is already switched into what would appear to be a feature branch (e.g. NOT `main`, NOT `master`, NOT `dev`, etc).  If git already appears to be in a feature branch, confirm that with the user.  If git is in a non-feature branch, create a new branch as `dev-{SLUG}` and switch to it before continuing.
 
-### 1.6 -- Announce
+### 1.6 -- Resume Detection (only with `--resume`; run before announcing)
+
+Decide where an interrupted feature restarts from the documents it already has. This
+is a filesystem question — answer it with commands, not judgement.
+
+1. List candidate docs: `find docs -type f -name '*.md' \( -path '*specs*' -o -path '*designs*' -o -path '*plans*' \) ! -name '*-ralph-status.md' ! -path '*/historical/*'`
+   (ralph-o-matic writes its own `docs/plans/<branch>-ralph-status.md`; it is not a plan).
+2. **Match the slug fuzzily.** For each filename, strip `.md`, a leading ISO date
+   (`YYYY-MM-DD-`), and the role suffix (`-spec`, `-design-phase-N`,
+   `-implementation-phase-N-task-M`, `-implementation-phase-N`), then tokenize on `-`
+   and drop filler words (`app`, `the`, `a`, `an`, `of`, `for`, `and`, `feature`). Score
+   each candidate by token overlap with `SLUG` in both directions; `app-push-notifications`
+   matches `push-notifications` at 1.0.
+3. **If the match is ambiguous** (two candidates within a close score, or none above
+   0.5), ask the user which feature to resume — they are present at start. Never guess.
+4. Adopt the matched slug's actual paths for `SPEC_PATH`, `DESIGN_GLOB` and `PLAN_GLOB`.
+5. **Pick the stage — the ladder** (count plan steps with
+   `find docs/superpowers/plans -name '{SLUG}-implementation-phase-*-task-*.md' -exec grep -c -- '- \[ \]' {} + | awk -F: '{s+=$NF} END {print s+0}'` for unchecked, and the same with `\[x\]` for checked):
+   - nothing found → full pipeline (Phase 2)
+   - spec only → Phase 3 (design brainstorm)
+   - spec + designs → Phase 5 (design alignment), then on
+   - spec + designs + plans, **no step checked yet** → **Phase 7** (plan alignment). Resumed
+     plans re-enter at plan alignment and pass the dependency gate: plans written by an
+     earlier run were validated against an earlier state of the repo.
+   - plans with some steps checked and some unchecked → **Phase 8** (implementation of the
+     unchecked tasks only). Do not re-align plans that code has already been written
+     against.
+   - every plan step checked → **Phase 9** (ralph prep).
+   - `RALPH.md` + `docs/reference/focus-areas.md` already committed for this feature →
+     **Phase 10** (ralph submit).
+   When in doubt, start earlier: a wrong stage costs time, skipping a stage costs work.
+6. **Reuse an existing test baseline.** If `docs/test-baseline.json` exists, never re-run
+   Phase 7.5 on resume: once any feature code is in the tree, a fresh baseline would record
+   this work's own failures as pre-existing. Phase 7.5 runs only if the file is absent AND
+   no plan step is checked yet.
+7. Set `DESIGN_COUNT` and `PLAN_COUNT` from the existing docs (as in 3.3 and 6.2).
+8. Report the detected stage and its evidence, and confirm with the user before starting.
+
+### 1.7 -- Announce
 
 Output to the user:
 
@@ -71,35 +109,8 @@ Feature pipeline initialized:
   Plans:          {PLAN_GLOB}
   Max Iterations: {MAX_ITERATIONS}
   Priority:       {PRIORITY}
-  Start at:       {Phase 2 | resumed stage from 1.7}
+  Start at:       {Phase 2 | resumed stage from 1.6}
 ```
-
-### 1.7 -- Resume Detection (only with `--resume`)
-
-Decide where an interrupted feature restarts from the documents it already has. This
-is a filesystem question — answer it with commands, not judgement.
-
-1. List candidate docs: `find docs -type f -name '*.md' \( -path '*specs*' -o -path '*designs*' -o -path '*plans*' \)`.
-2. **Match the slug fuzzily.** For each filename, strip `.md`, a leading ISO date
-   (`YYYY-MM-DD-`), and the role suffix (`-spec`, `-design-phase-N`,
-   `-implementation-phase-N-task-M`, `-implementation-phase-N`), then tokenize on `-`
-   and drop filler words (`app`, `the`, `a`, `an`, `of`, `for`, `and`, `feature`). Score
-   each candidate by token overlap with `SLUG` in both directions; `app-push-notifications`
-   matches `push-notifications` at 1.0.
-3. **If the match is ambiguous** (two candidates within a close score, or none above
-   0.5), ask the user which feature to resume — they are present at start. Never guess.
-4. Adopt the matched slug's actual paths for `SPEC_PATH`, `DESIGN_GLOB` and `PLAN_GLOB`.
-5. **Pick the stage — the ladder:**
-   - nothing found → full pipeline (Phase 2)
-   - spec only → Phase 3 (design brainstorm)
-   - spec + designs → Phase 5 (design alignment), then on
-   - spec + designs + plans → **Phase 7** (plan alignment). Resumed plans ALWAYS re-enter
-     at plan alignment and pass the dependency gate: plans written by an earlier run were
-     validated against an earlier state of the repo.
-   - plans with checked steps → still Phase 7; Phase 8 then implements only the unchecked
-     tasks.
-   When in doubt, start earlier: a wrong stage costs time, skipping a stage costs work.
-6. Report the detected stage and its evidence, and confirm with the user before starting.
 
 ---
 
@@ -240,8 +251,10 @@ least one design document.
 ### 3.3 -- Count design phases for later reference:
 
 ```bash
-DESIGN_COUNT=$(ls {DESIGN_GLOB} 2>/dev/null | wc -l | xargs)
+find docs/superpowers/specs -name '{SLUG}-design-phase-*.md' | wc -l | xargs   # → DESIGN_COUNT
 ```
+
+Note the printed number as `DESIGN_COUNT`; shell variables do not persist between commands.
 
 ---
 
@@ -394,8 +407,7 @@ Dispatch via **Agent** tool:
 ### 6.2 -- Verify and Checkpoint
 
 ```bash
-ls {PLAN_GLOB} 2>/dev/null | head -10
-PLAN_COUNT=$(ls {PLAN_GLOB} 2>/dev/null | wc -l | xargs)
+find docs/superpowers/plans -name '{SLUG}-implementation-phase-*-task-*.md' | wc -l | xargs   # → PLAN_COUNT
 git push --quiet -u origin HEAD
 ```
 
@@ -514,10 +526,23 @@ Dispatch via **Agent** tool (`model: opus`), read-only:
 
 ### 7.2.2 -- Count (deterministically, failing closed)
 
-Count the lines of the subagent's `GAPS:` block yourself:
-`NEEDS = (lines starting "BLOCKING:") + (lines starting "DECISION:")`. If the report has
-no `GAPS:` block, or the block is unreadable, treat `NEEDS` as **1** — a gate that
-cannot read its input must not wave the plans through.
+Count the subagent's `GAPS:` block yourself. Save the block (everything after the
+`GAPS:` line) to a scratch file and normalise before counting — strip list bullets,
+emphasis and whitespace, and ignore case, so `- **Decision:** …` still counts:
+
+```bash
+sed -E 's/^[[:space:]*>#-]+//; s/\*\*//g' /tmp/{SLUG}-gaps.txt | tr '[:lower:]' '[:upper:]' \
+  | grep -cE '^(BLOCKING|DECISION)[[:space:]]*:'        # → NEEDS
+```
+
+Fail closed:
+- no `GAPS:` block, or an unreadable one → `NEEDS = 1`;
+- the block has lines but none starts with a recognised prefix → `NEEDS = 1`;
+- the alignment report's `UNRESOLVED-DEPENDENCIES: <n>` is above 0 but `NEEDS = 0` →
+  re-dispatch the classifier once with that discrepancy named; if it still says 0, treat
+  `NEEDS = 1`.
+
+A gate that cannot read its input must not wave the plans through.
 
 - `NEEDS = 0` → continue to Phase 7.5. Record the NON-BLOCKING lines in the final report.
 - `NEEDS > 0` → 7.2.3.
@@ -529,8 +554,9 @@ cannot read its input must not wave the plans through.
    git push --quiet -u origin HEAD
    ralph-o-matic notify --message "Feature pipeline for '{SLUG}' needs your decision on {NEEDS} item(s) before implementation can start. Open the Claude Code session to answer. Items: {one-line list}"
    ```
-2. Present the BLOCKING and DECISION items to the user **one at a time, one question per
-   turn**: name the consumer, the missing producer or pending choice, and the concrete
+2. Before asking, confirm each item is real: for a BLOCKING item, grep for the producer
+   and drop it if it exists — never put a phantom gap in front of the human. Then present
+   the BLOCKING and DECISION items to the user **one at a time, one question per turn**: name the consumer, the missing producer or pending choice, and the concrete
    decision required, with 2–3 options and a recommendation. Stay at
    implementation-design altitude (boundaries, interfaces, which `file:symbol` produces
    what) — not function bodies. Record each answer as a concrete rule an implementer can
@@ -561,7 +587,8 @@ cannot read its input must not wave the plans through.
 ## Phase 7.5: Capture Branch-Point Test Baseline (SUBAGENT)
 
 Before ANY implementation begins -- while the worktree is still at the feature
-branch's starting point -- record which tests **already fail**. Whatever fails now is
+branch's starting point -- record which tests **already fail**. On `--resume`, skip this
+phase whenever `docs/test-baseline.json` already exists (see 1.6). Whatever fails now is
 **pre-existing**, not caused by this work. Later stages gate on NEW-vs-baseline
 rather than on a fully green suite.
 
@@ -622,7 +649,7 @@ test -f docs/test-baseline.json && jq -e '.suites' docs/test-baseline.json >/dev
 ```
 
 If the baseline is missing or not valid JSON, **do not throw away the spec, designs
-and plans one step from use.** Write `{"suites": []}` to `docs/test-baseline.json`,
+and plans one step from use.** Write `{"suites": [], "fallback": true}` to `docs/test-baseline.json`,
 commit and push it, set `BASELINE_FALLBACK=true`, and continue. Say so loudly: in the
 Phase 11 Teams message and the final summary ("no baseline — every failure will look
 new; check the suites by hand").
@@ -673,11 +700,19 @@ Dispatch via **Agent** tool:
 After each dispatch, count what is left yourself — do not rely on the report alone:
 
 ```bash
-REMAINING=$(grep -l -- '- \[ \]' {PLAN_GLOB} 2>/dev/null | wc -l | xargs)   # task files with unchecked steps
-UNBLOCKED=$(for f in $(grep -l -- '- \[ \]' {PLAN_GLOB} 2>/dev/null); do
-  grep -q -- '> BLOCKED:' "$f" || echo "$f"; done | wc -l | xargs)          # ...of which carry no blocker note
+bash -c 'cd "$(git rev-parse --show-toplevel)"; shopt -s nullglob
+left=0; remaining=0; unblocked=0
+for f in docs/superpowers/plans/{SLUG}-implementation-phase-*-task-*.md; do
+  n=$(grep -c -- "- \[ \]" "$f"); left=$((left+n))
+  if [ "$n" -gt 0 ]; then remaining=$((remaining+1)); grep -q -- "> BLOCKED:" "$f" || unblocked=$((unblocked+1)); fi
+done
+echo "STEPS_LEFT=$left REMAINING=$remaining UNBLOCKED=$unblocked"'
 git log --oneline -5
 ```
+
+Note the three printed numbers; compare `STEPS_LEFT` with the previous dispatch's value
+to judge progress (a dispatch that finishes most of a task's steps is progress even if no
+whole task completed).
 
 - `REMAINING = 0` → implementation complete; go to 8.3.
 - **All remaining tasks are blocked** (`REMAINING > 0` and `UNBLOCKED = 0`) → stop
@@ -689,7 +724,7 @@ git log --oneline -5
   ```
   Then go to 8.3. Blocked work still goes to refinement — the blockers stay visible
   there and in the PR — but no more implementation passes are spent on them.
-- Otherwise, if this dispatch **reduced** `REMAINING` and fewer than 4 dispatches have
+- Otherwise, if this dispatch **reduced** `STEPS_LEFT` and fewer than 4 dispatches have
   run → re-dispatch (8.1).
 - Otherwise (no progress, or 4 dispatches done) → stop dispatching with
   `IMPL_STATUS=DONE_WITH_CONCERNS` and the remaining count. Never spin on a task that
@@ -773,7 +808,7 @@ Any missing file or marker is a failure. Go to 9.3.
 
 ```bash
 git push --quiet -u origin HEAD
-ralph-o-matic notify --message "Pipeline failed generating ralph review files for {SLUG}. Error: {ERROR}. Resume: /auto-ralph-prep {SPEC_PATH} --max-iterations {MAX_ITERATIONS}, then /auto-ralph-submit"
+ralph-o-matic notify --message "Pipeline failed generating ralph review files for {SLUG}. Error: {ERROR}. Resume: /feature-pipeline --resume --slug {SLUG} (re-enters at ralph prep with the implementation status)"
 ```
 
 Stop the pipeline.
